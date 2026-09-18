@@ -47,7 +47,7 @@
 // });
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pitayapro/features/flowering_event/presentation/providers/flowering_provider.dart';
+
 
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
@@ -84,21 +84,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     builder: (context, state) => const FarmDashboardScreen(),
   ),
   GoRoute(
+  path: '/my-farm/map',
+  builder: (context, state) => const FarmMapScreen(),
+),
+  GoRoute(
     path: '/my-farm/create',
     builder: (context, state) => const CreateFarmScreen(),
   ),
 
-    GoRoute(
-  path: '/flowering/:id',
-  builder: (context, state) {
-    // You'll need to pass the event data
-    final eventId = state.pathParameters['id'];
-    // TODO: Fetch event by ID
-    return FloweringDetailScreen(
-      event: mockFloweringEvents.first, // Replace with actual fetch
-    );
-  },
-),
+   GoRoute(
+        path: '/flowering/:id',
+        builder: (context, state) {
+          final eventId = state.pathParameters['id']!;
+          return FloweringDetailScreen(eventId: eventId);
+        },
+      ),
     ],
   );
 });
