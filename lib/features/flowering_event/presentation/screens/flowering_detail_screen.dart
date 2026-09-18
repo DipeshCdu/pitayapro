@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:pitayapro/features/flowering/presentation/providers/flowering_provider.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../providers/flowering_provider.dart';
 
 class FloweringDetailScreen extends ConsumerWidget {
   final String eventId;
