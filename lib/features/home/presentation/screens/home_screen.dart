@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
 
-class HomeScreen extends StatelessWidget {
+import '../../../../core/theme/app_colors.dart';
+import '../../../my_farm/presentation/providers/weather_provider.dart';
+
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _buildAppBar(context),
@@ -15,9 +18,9 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildGreeting(context), // ✅ Pass context here
+            _buildGreeting(context),
             const SizedBox(height: 16),
-            _buildWeatherCard(),
+            _buildWeatherCard(ref),
             const SizedBox(height: 20),
             _buildFloweringOverview(context),
             const SizedBox(height: 16),
@@ -37,9 +40,7 @@ class HomeScreen extends StatelessWidget {
       elevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.menu, color: Colors.white, size: 28),
-        onPressed: () {
-          // TODO: Open drawer
-        },
+        onPressed: () {},
       ),
       title: const Text(
         'Pitaya Pro',
@@ -50,9 +51,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             IconButton(
               icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 28),
-              onPressed: () {
-                // TODO: Navigate to notifications
-              },
+              onPressed: () {},
             ),
             Positioned(
               right: 8,
@@ -74,7 +73,7 @@ class HomeScreen extends StatelessWidget {
   }
 
   // ── GREETING ──────────────────────────────────────────────
-  Widget _buildGreeting(BuildContext context) { // ✅ Added BuildContext parameter
+  Widget _buildGreeting(BuildContext context) {
     return Row(
       children: [
         Container(
@@ -93,7 +92,7 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Good morning, Ramesh ',
+                'Good morning, Ramesh',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -112,7 +111,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         ElevatedButton.icon(
-          onPressed: () => context.go('/my-farm'), // ✅ Now context is defined!
+          onPressed: () => context.go('/my-farm'),
           icon: const Icon(Icons.agriculture, size: 18),
           label: const Text('My Farm'),
           style: ElevatedButton.styleFrom(
@@ -125,76 +124,114 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // ─── WEATHER CARD ─────────────────────────────────────────
-  Widget _buildWeatherCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  // ─── WEATHER CARD (REAL DATA) ─────────────────────────────
+  Widget _buildWeatherCard(WidgetRef ref) {
+    final weatherAsync = ref.watch(weatherProvider);
+
+    return weatherAsync.when(
+      data: (weather) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, AppColors.primaryLight],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    '28°C',
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '${weather.temperature.toStringAsFixed(1)}°C',
+                        style: const TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.wb_sunny, color: Colors.amber, size: 40),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.wb_sunny, color: Colors.amber, size: 40),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text(
+                        'Darwin,',
+                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                      ),
+                      const Text(
+                        'Australia',
+                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                      ),
+                      const SizedBox(height: 4),
+                      GestureDetector(
+                        onTap: () => ref.refresh(weatherProvider),
+                        child: const Icon(Icons.refresh, color: Colors.white70, size: 18),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    'Darwin,',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                  const Text(
-                    'Australia',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                  const SizedBox(height: 4),
-                  GestureDetector(
-                    onTap: () {
-                      // TODO: Refresh weather
-                    },
-                    child: const Icon(Icons.refresh, color: Colors.white70, size: 18),
-                  ),
-                ],
+              const SizedBox(height: 8),
+              Text(
+                'Feels like ${weather.feelsLike.toStringAsFixed(1)}°C',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Humidity ${weather.humidity.toStringAsFixed(0)}%  •  Rain ${weather.rainfall.toStringAsFixed(1)} mm',
+                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Partly Sunny',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
+        );
+      },
+      loading: () => Container(
+        width: double.infinity,
+        height: 160,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      ),
+      error: (error, stack) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.red.shade200),
+        ),
+        child: Column(
+          children: [
+            const Text(
+              'Unable to load weather',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'High 31° • Low 24°',
-            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
-          ),
-        ],
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () => ref.refresh(weatherProvider),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -287,7 +324,7 @@ class HomeScreen extends StatelessWidget {
             children: [
               Text(
                 status,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.success,
                   fontWeight: FontWeight.w500,
@@ -391,19 +428,19 @@ class HomeScreen extends StatelessWidget {
         onTap: (index) {
           switch (index) {
             case 0:
-              context.go('/my-farm');
+              context.go('/home');
               break;
             case 1:
               context.go('/flowering');
               break;
             case 2:
-              // TODO: Inputs screen
+              // TODO: Inputs
               break;
             case 3:
-              // TODO: Soil Tests screen
+              // TODO: Soil Tests
               break;
             case 4:
-              // TODO: Insights screen
+              // TODO: Insights
               break;
           }
         },

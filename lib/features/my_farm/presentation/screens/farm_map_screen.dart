@@ -2,146 +2,355 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../providers/farm_map_provider.dart';
-import '../widgets/block_details_sheet.dart';
 
-class FarmMapScreen extends ConsumerWidget {
+class FarmMapScreen extends ConsumerStatefulWidget {
   const FarmMapScreen({super.key});
 
-  // Helper function to check if a tapped point is inside a polygon
-  bool _isPointInPolygon(LatLng point, List<LatLng> polygon) {
-    int i, j = polygon.length - 1;
-    bool oddNodes = false;
-    for (i = 0; i < polygon.length; i++) {
-      if ((polygon[i].latitude < point.latitude && polygon[j].latitude >= point.latitude) ||
-          (polygon[j].latitude < point.latitude && polygon[i].latitude >= point.latitude)) {
-        if (polygon[i].longitude + (point.latitude - polygon[i].latitude) / (polygon[j].latitude - polygon[i].latitude) * (polygon[j].longitude - polygon[i].longitude) < point.longitude) {
-          oddNodes = !oddNodes;
-        }
-      }
-      j = i;
+  @override
+  ConsumerState<FarmMapScreen> createState() => _FarmMapScreenState();
+}
+
+class _FarmMapScreenState extends ConsumerState<FarmMapScreen> {
+  final LatLng _farmCenter = const LatLng(-12.4634, 130.8456);
+  final MapController _mapController = MapController();
+
+  final List<LatLng> _currentPoints = [];
+  bool _isDrawing = false;
+
+  final List<Color> _availableColors = [
+    Colors.green,
+    Colors.orange,
+    Colors.blue,
+    Colors.purple,
+    Colors.red,
+    Colors.teal,
+    Colors.brown,
+    Colors.indigo,
+  ];
+
+  void _onMapTap(TapPosition tapPosition, LatLng point) {
+    if (!_isDrawing) return;
+    setState(() {
+      _currentPoints.add(point);
+    });
+  }
+
+  void _startDrawing() {
+    setState(() {
+      _isDrawing = true;
+      _currentPoints.clear();
+    });
+  }
+
+  void _cancelDrawing() {
+    setState(() {
+      _isDrawing = false;
+      _currentPoints.clear();
+    });
+  }
+
+  void _finishDrawing() {
+    if (_currentPoints.length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Need at least 3 points to create a land block')),
+      );
+      return;
     }
-    return oddNodes;
+    _showSaveBlockDialog();
+  }
+
+  void _showSaveBlockDialog() {
+    final nameController = TextEditingController();
+    Color selectedColor = _availableColors[0];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Save Land Block'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Block Name (e.g. Block A)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Select Color'),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    children: _availableColors.map((color) {
+                      final isSelected = selectedColor == color;
+                      return GestureDetector(
+                        onTap: () {
+                          setDialogState(() => selectedColor = color);
+                        },
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? Border.all(color: Colors.black, width: 3)
+                                : null,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _cancelDrawing();
+                  },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final name = nameController.text.trim();
+                    if (name.isEmpty) return;
+
+                    final newBlock = FarmBlock(
+                      id: const Uuid().v4(),
+                      name: name,
+                      points: List<LatLng>.from(_currentPoints),
+                      color: selectedColor,
+                    );
+
+                    ref.read(farmMapProvider.notifier).addBlock(newBlock);
+
+                    setState(() {
+                      _isDrawing = false;
+                      _currentPoints.clear();
+                    });
+
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(FarmBlock block) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Block?'),
+        content: Text('Are you sure you want to delete "${block.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              ref.read(farmMapProvider.notifier).deleteBlock(block.id);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mapState = ref.watch(farmMapProvider);
-    final mapNotifier = ref.read(farmMapProvider.notifier);
-
-    // Auto-open bottom sheet when a block is selected
-    if (mapState.selectedBlock != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => BlockDetailsSheet(block: mapState.selectedBlock!),
-        ).then((_) => mapNotifier.clearSelection());
-      });
-    }
+  Widget build(BuildContext context) {
+    final blocks = ref.watch(farmMapProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primaryDark,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          'Farm Map',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        foregroundColor: Colors.white,
+        title: Text('Farm Map (${blocks.length} blocks)'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.my_location, color: Colors.white),
-            onPressed: () {
-              // TODO: Implement real GPS location
-            },
-          ),
+          if (_isDrawing) ...[
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: _cancelDrawing,
+            ),
+            IconButton(
+              icon: const Icon(Icons.check),
+              onPressed: _finishDrawing,
+            ),
+          ] else
+            IconButton(
+              icon: const Icon(Icons.my_location),
+              onPressed: () => _mapController.move(_farmCenter, 16),
+            ),
         ],
       ),
-      body: FlutterMap(
-        options: MapOptions(
-          initialCenter: const LatLng(-12.4640, 130.8460), // Center of mock blocks
-          initialZoom: 17.0,
-          // ✅ FIX: Handle taps on the map to detect polygon clicks
-          onTap: (tapPosition, point) {
-            bool tappedBlock = false;
-            for (var block in mapState.blocks) {
-              if (_isPointInPolygon(point, block.boundary)) {
-                mapNotifier.selectBlock(block);
-                tappedBlock = true;
-                break;
-              }
-            }
-            if (!tappedBlock) {
-              mapNotifier.clearSelection();
-            }
-          },
-        ),
+      body: Stack(
         children: [
-          // 1. OpenStreetMap Tile Layer
-          TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.pitayapro.app',
-          ),
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _farmCenter,
+              initialZoom: 16,
+              minZoom: 12,
+              maxZoom: 19,
+              onTap: _onMapTap,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.pitayapro.app',
+              ),
 
-          // 2. Polygon Boundaries (Removed onTap from here)
-          PolygonLayer(
-            polygons: mapState.blocks.map((block) {
-              return Polygon(
-                points: block.boundary,
-                color: block.color.withOpacity(0.3), // Semi-transparent fill
-                borderColor: block.color,
-                borderStrokeWidth: 3.0,
-                isFilled: true,
-              );
-            }).toList(),
-          ),
+              // Saved polygons
+              PolygonLayer(
+                polygons: blocks.map((block) {
+                  return Polygon(
+                    points: block.points,
+                    color: block.color.withOpacity(0.35),
+                    borderColor: block.color,
+                    borderStrokeWidth: 3,
+                  );
+                }).toList(),
+              ),
 
-          // 3. Center Labels for Blocks
-          MarkerLayer(
-            markers: mapState.blocks.map((block) {
-              return Marker(
-                width: 80,
-                height: 40,
-                point: block.center,
-                child: IgnorePointer( // Let taps pass through to the polygon
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4)],
+              // Drawing polygon
+              if (_currentPoints.length >= 2)
+                PolygonLayer(
+                  polygons: [
+                    Polygon(
+                      points: _currentPoints,
+                      color: Colors.blue.withOpacity(0.25),
+                      borderColor: Colors.blue,
+                      borderStrokeWidth: 2,
                     ),
-                    child: Text(
-                      block.name,
-                      style: TextStyle(
-                        color: block.color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                  ],
+                ),
+
+              // Drawing points
+              if (_currentPoints.isNotEmpty)
+                MarkerLayer(
+                  markers: _currentPoints.map((point) {
+                    return Marker(
+                      point: point,
+                      width: 16,
+                      height: 16,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+              // Block labels (tap to delete)
+              MarkerLayer(
+                markers: blocks.map((block) {
+                  final center = LatLng(
+                    block.points.map((p) => p.latitude).reduce((a, b) => a + b) /
+                        block.points.length,
+                    block.points.map((p) => p.longitude).reduce((a, b) => a + b) /
+                        block.points.length,
+                  );
+
+                  return Marker(
+                    point: center,
+                    width: 110,
+                    height: 36,
+                    child: GestureDetector(
+                      onLongPress: () => _confirmDelete(block),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            block.name,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+
+          // Instruction
+          Positioned(
+            top: 12,
+            left: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 6,
                   ),
-                ),
-              );
-            }).toList(),
+                ],
+              ),
+              child: Text(
+                _isDrawing
+                    ? 'Tap to add points. Press ✓ when finished. Long press label to delete.'
+                    : 'Press "Draw Land" to create a new block. Long press name to delete.',
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Navigate to Add Block Screen
-        },
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_location_alt, color: Colors.white),
-        label: const Text('Add Block', style: TextStyle(color: Colors.white)),
-      ),
+      floatingActionButton: _isDrawing
+          ? null
+          : FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
+              onPressed: _startDrawing,
+              icon: const Icon(Icons.pentagon, color: Colors.white),
+              label: const Text('Draw Land', style: TextStyle(color: Colors.white)),
+            ),
     );
   }
 }
