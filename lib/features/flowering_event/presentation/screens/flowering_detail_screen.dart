@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/status_chip.dart';
-import '../../data/models/flowering_event_model.dart';
-import '../widgets/moon_phase_timeline.dart';
-import '../providers/flowering_provider.dart'; // ✅ CRITICAL IMPORT
+import '../providers/flowering_provider.dart';
 
 class FloweringDetailScreen extends ConsumerWidget {
   final String eventId;
@@ -14,361 +13,213 @@ class FloweringDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // ✅ This is where we use the provider to get the data
-    final event = ref.watch(floweringEventByIdProvider(eventId));
+    final events = ref.watch(floweringListProvider);
+    final event = events.firstWhere(
+      (e) => e.id == eventId,
+      orElse: () => FloweringEvent(
+        id: '',
+        variety: 'Not Found',
+        block: '',
+        status: '',
+      ),
+    );
 
-    if (event == null) {
+    if (event.id.isEmpty) {
       return Scaffold(
-        appBar: AppBar(
-          backgroundColor: AppColors.primaryDark,
-          title: const Text('Event Not Found'),
-        ),
-        body: const Center(
-          child: Text('Flowering event not found.'),
-        ),
+        appBar: AppBar(title: const Text('Not Found')),
+        body: const Center(child: Text('Event not found')),
       );
+    }
+
+    Color statusColor;
+    switch (event.status) {
+      case 'Budding':
+        statusColor = Colors.orange;
+        break;
+      case 'Flowering':
+        statusColor = Colors.green;
+        break;
+      case 'Harvested':
+        statusColor = Colors.blueGrey;
+        break;
+      default:
+        statusColor = Colors.grey;
     }
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primaryDark,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          'Event Details',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        foregroundColor: Colors.white,
+        title: Text(event.variety),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white),
-            onPressed: () {
-              // TODO: Navigate to edit screen
-            },
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () => _confirmDelete(context, ref, event),
           ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // 1. Header Card
-          _buildHeaderCard(event),
-          const SizedBox(height: 16),
-
-          // 2. Moon Phase Timeline
-          MoonPhaseTimeline(
-            budDate: event.budDate,
-            flowerDate: event.flowerDate,
-            harvestDate: event.harvestDate,
+          // Status Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    event.status,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                if (event.averageBrix != null)
+                  Text(
+                    '${event.averageBrix}° Brix',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+              ],
+            ),
           ),
+
           const SizedBox(height: 16),
 
-          // 3. Fruit Results (if harvested or has fruit set)
-          if (event.status == EventStatus.harvested || event.fruitSet > 0) ...[
-            _buildFruitResultsCard(event),
-            const SizedBox(height: 16),
-          ],
+          // Basic Info
+          _sectionCard(
+            title: 'Basic Information',
+            children: [
+              _infoRow('Variety', event.variety),
+              _infoRow('Block / Location', event.block),
+              if (event.moonPhase != null) _infoRow('Moon Phase', event.moonPhase!),
+            ],
+          ),
 
-          // 4. Return on Fruit (ROI)
-          if (event.estimatedReturn != null) ...[
-            _buildROICard(event),
-            const SizedBox(height: 16),
-          ],
+          const SizedBox(height: 12),
 
-          // 5. Grower Notes
-          if (event.growerNotes != null && event.growerNotes!.isNotEmpty) ...[
-            _buildNotesCard(event),
-            const SizedBox(height: 24),
-          ],
+          // Dates
+          _sectionCard(
+            title: 'Dates',
+            children: [
+              _infoRow('Budding Date', _formatDate(event.buddingDate)),
+              _infoRow('Flowering Date', _formatDate(event.floweringDate)),
+              _infoRow('Harvest Date', _formatDate(event.harvestDate)),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Pollination
+          _sectionCard(
+            title: 'Pollination',
+            children: [
+              _infoRow('Method', event.pollinationMethod ?? '-'),
+              _infoRow('Pollen Variety', event.pollenVariety ?? '-'),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Fruit Results
+          _sectionCard(
+            title: 'Fruit Results',
+            children: [
+              _infoRow('Fruit Set', event.fruitSet?.toString() ?? '-'),
+              _infoRow('Fruit Aborted', event.fruitAborted?.toString() ?? '-'),
+              _infoRow('Total Weight', event.totalWeightKg != null ? '${event.totalWeightKg} kg' : '-'),
+              _infoRow('Average Brix', event.averageBrix != null ? '${event.averageBrix}°' : '-'),
+              _infoRow('Sale Price / kg', event.salePricePerKg != null ? '\$${event.salePricePerKg}' : '-'),
+              if (event.estimatedReturn != null)
+                _infoRow(
+                  'Estimated Return',
+                  '\$${event.estimatedReturn!.toStringAsFixed(2)}',
+                  isHighlight: true,
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Notes
+          if (event.notes != null && event.notes!.isNotEmpty)
+            _sectionCard(
+              title: 'Grower Notes',
+              children: [
+                Text(
+                  event.notes!,
+                  style: TextStyle(color: Colors.grey.shade700, height: 1.4),
+                ),
+              ],
+            ),
+
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderCard(FloweringEvent event) {
+  String _formatDate(DateTime? date) {
+    if (date == null) return '-';
+    return DateFormat('dd MMM yyyy').format(date);
+  }
+
+  Widget _sectionCard({required String title, required List<Widget> children}) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            event.varietyName,
+            title,
             style: const TextStyle(
-              fontSize: 22,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
             ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.location_on, color: Colors.white70, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                '${event.block} • ${event.row}',
-                style: const TextStyle(color: Colors.white70),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildStatItem('Brix', '${event.brixScore}°', Icons.water_drop),
-              _buildStatItem('Stage', _formatStatus(event.status), Icons.track_changes),
-              _buildStatItem(
-                'Pollination',
-                event.pollinationMethod.split(' ')[0],
-                Icons.touch_app,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white70, size: 20),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: Colors.white70),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFruitResultsCard(FloweringEvent event) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.shopping_basket, color: AppColors.accent, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'Fruit Results',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildResultRow('Fruit Set', '${event.fruitSet}', Icons.check_circle),
-          const SizedBox(height: 8),
-          _buildResultRow('Fruit Aborted', '${event.fruitAborted}', Icons.cancel),
-          if (event.fruitWeightKg != null) ...[
-            const SizedBox(height: 8),
-            _buildResultRow('Total Weight', '${event.fruitWeightKg} kg', Icons.scale),
-          ],
-          if (event.fleshColour != null) ...[
-            const SizedBox(height: 8),
-            _buildResultRow('Flesh Colour', event.fleshColour!, Icons.palette),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResultRow(String label, String value, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AppColors.textSecondary),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const Spacer(),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildROICard(FloweringEvent event) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.success, AppColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.trending_up, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'Return on Fruit',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildROIItem('Total Weight', '${event.fruitWeightKg} kg'),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildROIItem('Price/kg', '\$${event.salePricePerKg}'),
-              ),
-            ],
           ),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Estimated Return',
-                  style: TextStyle(fontSize: 14, color: Colors.white),
-                ),
-                Text(
-                  '\$${event.estimatedReturn!.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ...children,
         ],
       ),
     );
   }
 
-  Widget _buildROIItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: Colors.white70),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNotesCard(FloweringEvent event) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _infoRow(String label, String value, {bool isHighlight = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Icon(Icons.note, color: AppColors.accent, size: 20),
-              const SizedBox(width: 8),
-              const Text(
-                'Grower Notes',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
+          Text(
+            label,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              event.growerNotes!,
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-                height: 1.5,
-              ),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: isHighlight ? FontWeight.bold : FontWeight.w500,
+              fontSize: isHighlight ? 16 : 14,
+              color: isHighlight ? AppColors.primary : AppColors.textPrimary,
             ),
           ),
         ],
@@ -376,14 +227,31 @@ class FloweringDetailScreen extends ConsumerWidget {
     );
   }
 
-  String _formatStatus(EventStatus status) {
-    switch (status) {
-      case EventStatus.budding:
-        return 'Budding';
-      case EventStatus.flowering:
-        return 'Flowering';
-      case EventStatus.harvested:
-        return 'Harvested';
-    }
+  void _confirmDelete(BuildContext context, WidgetRef ref, FloweringEvent event) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Event?'),
+        content: Text('Are you sure you want to delete "${event.variety}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              ref.read(floweringListProvider.notifier).deleteEvent(event.id);
+              Navigator.pop(context); // close dialog
+              context.pop(); // go back to list
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 }

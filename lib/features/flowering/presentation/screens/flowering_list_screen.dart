@@ -93,9 +93,8 @@ class FloweringListScreen extends ConsumerWidget {
         ],
       ),
       child: InkWell(
-        onTap: () {
-          // We will open detail screen later
-          // context.push('/flowering/${event.id}');
+                onTap: () {
+          context.push('/flowering/${event.id}');
         },
         borderRadius: BorderRadius.circular(14),
         child: Row(

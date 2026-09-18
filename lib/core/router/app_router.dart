@@ -100,6 +100,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     path: '/my-farm/map',
     builder: (context, state) => const FarmMapScreen(),
   ),
+  GoRoute(
+  path: '/flowering/add',
+  builder: (context, state) => const AddFloweringScreen(),
+),
+GoRoute(
+  path: '/flowering/:id',
+  builder: (context, state) {
+    final eventId = state.pathParameters['id']!;
+    return FloweringDetailScreen(eventId: eventId);
+  },
+),
 
    GoRoute(
         path: '/flowering/:id',
