@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pitayapro/core/widgets/app_bottom_nav.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../providers/farm_map_provider.dart';
@@ -78,8 +79,7 @@ class FarmDashboardScreen extends ConsumerWidget {
           const SizedBox(height: 24),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
+bottomNavigationBar: const AppBottomNav(currentIndex: 1),    );
   }
 
   // ====================== FARM PROFILE ======================
@@ -357,8 +357,7 @@ class FarmDashboardScreen extends ConsumerWidget {
               icon: Icons.science,
               label: 'Soil Test',
               color: Colors.blue,
-              onTap: () {},
-            ),
+onTap: () => context.go('/soil-tests'),            ),
             const SizedBox(width: 12),
             _actionButton(
               context,
@@ -480,23 +479,5 @@ class FarmDashboardScreen extends ConsumerWidget {
     );
   }
 
-  // ====================== BOTTOM NAV ======================
-  Widget _buildBottomNav(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: 0,
-      selectedItemColor: AppColors.primary,
-      unselectedItemColor: Colors.grey,
-      type: BottomNavigationBarType.fixed,
-      onTap: (index) {
-        if (index == 1) context.go('/flowering');
-      },
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'My Farm'),
-        BottomNavigationBarItem(icon: Icon(Icons.local_florist), label: 'Flowering'),
-        BottomNavigationBarItem(icon: Icon(Icons.science), label: 'Inputs'),
-        BottomNavigationBarItem(icon: Icon(Icons.biotech), label: 'Soil Tests'),
-        BottomNavigationBarItem(icon: Icon(Icons.insights), label: 'Insights'),
-      ],
-    );
-  }
+  
 }

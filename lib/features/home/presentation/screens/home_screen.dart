@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../my_farm/presentation/providers/weather_provider.dart';
 import '../../../flowering/presentation/providers/flowering_provider.dart';
-
+import '../../../../core/widgets/app_bottom_nav.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -83,8 +83,7 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(height: 30),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(context),
-    );
+bottomNavigationBar: const AppBottomNav(currentIndex: 0),    );
   }
 
   // ====================== GREETING ======================
@@ -229,7 +228,7 @@ class HomeScreen extends ConsumerWidget {
         'icon': Icons.science,
         'label': 'Soil Tests',
         'color': Colors.blue,
-        'route': null
+        'route': '/soil-tests',
       },
     ];
 
@@ -414,36 +413,5 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // ====================== BOTTOM NAV ======================
-  Widget _buildBottomNav(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: 0,
-      selectedItemColor: AppColors.primary,
-      unselectedItemColor: Colors.grey,
-      type: BottomNavigationBarType.fixed,
-      onTap: (index) {
-        switch (index) {
-          case 0:
-            context.go('/home');
-            break;
-          case 1:
-            context.go('/my-farm');
-            break;
-          case 2:
-            context.go('/flowering');
-            break;
-            case 3:
-            context.go('/inputs');
-            break;
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.agriculture), label: 'My Farm'),
-        BottomNavigationBarItem(icon: Icon(Icons.local_florist), label: 'Flowering'),
-        BottomNavigationBarItem(icon: Icon(Icons.science), label: 'Inputs'),
-        BottomNavigationBarItem(icon: Icon(Icons.insights), label: 'Insights'),
-      ],
-    );
-  }
+  
 }
