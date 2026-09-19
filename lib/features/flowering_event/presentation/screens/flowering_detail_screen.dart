@@ -53,6 +53,13 @@ class FloweringDetailScreen extends ConsumerWidget {
         foregroundColor: Colors.white,
         title: Text(event.variety),
         actions: [
+
+          IconButton(
+    icon: const Icon(Icons.edit),
+    onPressed: () {
+      context.push('/flowering/edit/${event.id}');
+    },
+  ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
             onPressed: () => _confirmDelete(context, ref, event),

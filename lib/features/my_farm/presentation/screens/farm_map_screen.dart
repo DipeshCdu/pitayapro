@@ -8,7 +8,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../providers/farm_map_provider.dart';
 
 class FarmMapScreen extends ConsumerStatefulWidget {
-  const FarmMapScreen({super.key});
+  final String? focusBlockId;
+
+  const FarmMapScreen({super.key, this.focusBlockId});
 
   @override
   ConsumerState<FarmMapScreen> createState() => _FarmMapScreenState();
@@ -31,6 +33,31 @@ class _FarmMapScreenState extends ConsumerState<FarmMapScreen> {
     Colors.brown,
     Colors.indigo,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Focus on specific block if provided
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusOnBlock();
+    });
+  }
+
+  void _focusOnBlock() {
+    if (widget.focusBlockId == null) return;
+
+    final blocks = ref.read(farmMapProvider);
+    final block = blocks.where((b) => b.id == widget.focusBlockId).firstOrNull;
+
+    if (block != null && block.points.isNotEmpty) {
+      final center = LatLng(
+        block.points.map((p) => p.latitude).reduce((a, b) => a + b) / block.points.length,
+        block.points.map((p) => p.longitude).reduce((a, b) => a + b) / block.points.length,
+      );
+      _mapController.move(center, 17);
+    }
+  }
 
   void _onMapTap(TapPosition tapPosition, LatLng point) {
     if (!_isDrawing) return;
@@ -230,11 +257,12 @@ class _FarmMapScreenState extends ConsumerState<FarmMapScreen> {
               // Saved polygons
               PolygonLayer(
                 polygons: blocks.map((block) {
+                  final isFocused = widget.focusBlockId == block.id;
                   return Polygon(
                     points: block.points,
-                    color: block.color.withOpacity(0.35),
+                    color: block.color.withOpacity(isFocused ? 0.5 : 0.35),
                     borderColor: block.color,
-                    borderStrokeWidth: 3,
+                    borderStrokeWidth: isFocused ? 5 : 3,
                   );
                 }).toList(),
               ),
@@ -271,7 +299,7 @@ class _FarmMapScreenState extends ConsumerState<FarmMapScreen> {
                   }).toList(),
                 ),
 
-              // Block labels (tap to delete)
+              // Block labels (long press to delete)
               MarkerLayer(
                 markers: blocks.map((block) {
                   final center = LatLng(
@@ -281,16 +309,18 @@ class _FarmMapScreenState extends ConsumerState<FarmMapScreen> {
                         block.points.length,
                   );
 
+                  final isFocused = widget.focusBlockId == block.id;
+
                   return Marker(
                     point: center,
-                    width: 110,
-                    height: 36,
+                    width: 120,
+                    height: 40,
                     child: GestureDetector(
                       onLongPress: () => _confirmDelete(block),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isFocused ? block.color : Colors.white,
                           borderRadius: BorderRadius.circular(6),
                           boxShadow: [
                             BoxShadow(
@@ -302,9 +332,10 @@ class _FarmMapScreenState extends ConsumerState<FarmMapScreen> {
                         child: Center(
                           child: Text(
                             block.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
+                              color: isFocused ? Colors.white : Colors.black,
                             ),
                           ),
                         ),

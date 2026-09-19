@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pitayapro/features/my_farm/presentation/providers/farm_map_provider.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../providers/farm_map_provider.dart';
 import '../widgets/weather_card.dart';
 
 class FarmDashboardScreen extends ConsumerWidget {
@@ -160,12 +160,16 @@ class FarmDashboardScreen extends ConsumerWidget {
             children: [
               _infoItem(Icons.person, 'Owner', 'Ramesh'),
               _infoItem(Icons.landscape, 'Climate', 'Tropical'),
-        Consumer(
-          builder: (context, ref, child) {
-            final blocks = ref.watch(farmMapProvider);
-            return _infoItem(Icons.map, 'Blocks', '${blocks.length}');
-          },
-        ),            ],
+              Consumer(
+                builder: (context, ref, child) {
+                  final blocks = ref.watch(farmMapProvider);
+                  return GestureDetector(
+                    onTap: () => context.push('/my-farm/blocks'),
+                    child: _infoItem(Icons.map, 'Blocks', '${blocks.length}'),
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),

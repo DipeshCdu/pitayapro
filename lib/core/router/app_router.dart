@@ -47,6 +47,10 @@
 // });
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pitayapro/features/flowering/presentation/screens/edit_flowering_screen.dart';
+import 'package:pitayapro/features/inputs/presentation/screens/add_fertilising_screen.dart';
+import 'package:pitayapro/features/inputs/presentation/screens/fertilising_list_screen.dart';
+import 'package:pitayapro/features/my_farm/presentation/screens/blocks_list_screen.dart';
 import 'package:pitayapro/features/my_farm/presentation/screens/edit_farm_screen.dart';
 import 'package:pitayapro/features/my_farm/presentation/screens/farm_map_screen.dart';
 
@@ -57,8 +61,6 @@ import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/flowering/presentation/screens/flowering_list_screen.dart';
 import '../../features/my_farm/presentation/screens/farm_dashboard_screen.dart'; // Add this import
 import '../../features/flowering_event/presentation/screens/flowering_detail_screen.dart';
-import '../../features/flowering/presentation/screens/add_flowering_screen.dart';
-import '../../features/flowering/presentation/screens/flowering_list_screen.dart';
 import '../../features/flowering/presentation/screens/add_flowering_screen.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -112,6 +114,7 @@ GoRoute(
   },
 ),
 
+
    GoRoute(
         path: '/flowering/:id',
         builder: (context, state) {
@@ -128,9 +131,38 @@ GoRoute(
   path: '/flowering/add',
   builder: (context, state) => const AddFloweringScreen(),
 ),
+
+GoRoute(
+  path: '/flowering/edit/:id',
+  builder: (context, state) {
+    final eventId = state.pathParameters['id']!;
+    return EditFloweringScreen(eventId: eventId);
+  },
+),
       GoRoute(
   path: '/flowering/add',
   builder: (context, state) => const AddFloweringScreen(),
+),
+
+GoRoute(
+  path: '/my-farm/map',
+  builder: (context, state) {
+    final focusBlockId = state.extra as String?;
+    return FarmMapScreen(focusBlockId: focusBlockId);
+  },
+),
+GoRoute(
+  path: '/my-farm/blocks',
+  builder: (context, state) => const BlocksListScreen(),
+),
+
+GoRoute(
+  path: '/inputs',
+  builder: (context, state) => const FertilisingListScreen(),
+),
+GoRoute(
+  path: '/inputs/add',
+  builder: (context, state) => const AddFertilisingScreen(),
 ),
     ],
   );
