@@ -29,7 +29,8 @@ class AppBottomNav extends StatelessWidget {
             context.go('/inputs');
             break;
           case 4:
-  context.go('/insights');            break;
+           context.go('/insights');           
+            break;
         }
       },
       items: const [

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
@@ -8,6 +7,7 @@ import '../../../flowering/presentation/providers/flowering_provider.dart';
 import '../../../inputs/presentation/providers/fertilising_provider.dart';
 import '../../../soil_tests/presentation/providers/soil_test_provider.dart';
 import '../../../my_farm/presentation/providers/farm_map_provider.dart';
+import '../../../pruning/presentation/providers/pruning_provider.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
@@ -18,6 +18,7 @@ class InsightsScreen extends ConsumerWidget {
     final fertilising = ref.watch(fertilisingListProvider);
     final soilTests = ref.watch(soilTestListProvider);
     final blocks = ref.watch(farmMapProvider);
+    final pruning = ref.watch(pruningListProvider);
 
     // Flowering stats
     final totalFlowering = flowering.length;
@@ -52,6 +53,15 @@ class InsightsScreen extends ConsumerWidget {
     final deficient =
         soilTests.where((s) => s.overallStatus.name == 'deficient').length;
 
+    // Pruning stats
+    final totalPruning = pruning.length;
+    final totalGreenWasteKg =
+        pruning.fold<double>(0, (sum, r) => sum + (r.greenWasteKg ?? 0));
+    final totalNutrientExport = pruning.fold<double>(
+      0,
+      (sum, r) => sum + (r.estimatedNutrientExport ?? 0),
+    );
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -69,7 +79,6 @@ class InsightsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
 
-          // Top summary row
           Row(
             children: [
               _statCard('Blocks', '${blocks.length}', Icons.map, Colors.teal),
@@ -93,10 +102,10 @@ class InsightsScreen extends ConsumerWidget {
               ),
               const SizedBox(width: 12),
               _statCard(
-                'Soil Tests',
-                '${soilTests.length}',
-                Icons.science,
-                Colors.blue,
+                'Pruning',
+                '$totalPruning',
+                Icons.content_cut,
+                Colors.orange,
               ),
             ],
           ),
@@ -129,11 +138,36 @@ class InsightsScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           _infoCard([
             _row('Total Applications', '${fertilising.length}'),
-            _row('Total Quantity', '${totalFertiliserKg.toStringAsFixed(1)} kg'),
+            _row(
+              'Total Quantity',
+              '${totalFertiliserKg.toStringAsFixed(1)} kg',
+            ),
             _row(
               'Total Cost',
               totalFertiliserCost > 0
                   ? '\$${totalFertiliserCost.toStringAsFixed(0)}'
+                  : '-',
+            ),
+          ]),
+
+          const SizedBox(height: 24),
+          const Text(
+            'Pruning & Green Waste',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _infoCard([
+            _row('Total Pruning Records', '$totalPruning'),
+            _row(
+              'Total Green Waste',
+              totalGreenWasteKg > 0
+                  ? '${totalGreenWasteKg.toStringAsFixed(1)} kg'
+                  : '-',
+            ),
+            _row(
+              'Est. Nutrient Export',
+              totalNutrientExport > 0
+                  ? totalNutrientExport.toStringAsFixed(1)
                   : '-',
             ),
           ]),
@@ -148,6 +182,7 @@ class InsightsScreen extends ConsumerWidget {
             _row('Optimal', '$optimal', valueColor: Colors.green),
             _row('Warning', '$warning', valueColor: Colors.orange),
             _row('Deficient', '$deficient', valueColor: Colors.red),
+            _row('Total Tests', '${soilTests.length}'),
           ]),
 
           const SizedBox(height: 24),
@@ -163,7 +198,7 @@ class InsightsScreen extends ConsumerWidget {
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Insights update automatically when you add flowering, fertilising, or soil test records.',
+                    'Insights update automatically when you add flowering, fertilising, pruning, or soil test records.',
                     style: TextStyle(fontSize: 13),
                   ),
                 ),
@@ -202,7 +237,10 @@ class InsightsScreen extends ConsumerWidget {
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
-            Text(title, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+            Text(
+              title,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
           ],
         ),
       ),

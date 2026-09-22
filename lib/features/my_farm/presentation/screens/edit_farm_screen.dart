@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../providers/farm_profile_provider.dart';
 
 class EditFarmScreen extends ConsumerStatefulWidget {
   const EditFarmScreen({super.key});
@@ -14,23 +15,26 @@ class EditFarmScreen extends ConsumerStatefulWidget {
 class _EditFarmScreenState extends ConsumerState<EditFarmScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final _nameController = TextEditingController(text: 'Pitaya Pro Farm');
-  final _ownerController = TextEditingController(text: 'Ramesh');
-  final _addressController = TextEditingController(text: 'Northern Territory, Australia');
-  final _regionController = TextEditingController(text: 'Tropical');
+  late TextEditingController _nameController;
+  late TextEditingController _ownerController;
+  late TextEditingController _addressController;
+  late TextEditingController _regionController;
+  late TextEditingController _notesController;
 
-  String _growingSystem = 'Open Field';
-  String _trellisSystem = 'T-bar Trellis';
-  String _irrigationSystem = 'Drip Irrigation';
+  late String _growingSystem;
+  late String _trellisSystem;
+  late String _irrigationSystem;
+  late String _soilType;
+  late String _mulchType;
 
-  final List<String> growingOptions = [
+  final growingOptions = [
     'Open Field',
     'Greenhouse',
     'Shade Structure',
     'Mixed',
   ];
 
-  final List<String> trellisOptions = [
+  final trellisOptions = [
     'Concrete Posts',
     'Timber Posts',
     'Tyre System',
@@ -39,7 +43,8 @@ class _EditFarmScreenState extends ConsumerState<EditFarmScreen> {
     'Other',
   ];
 
-  final List<String> irrigationOptions = [
+  final irrigationOptions = [
+    'Drip Irrigation',
     'Drip',
     'Spray / Overhead',
     'Flood Irrigation',
@@ -47,26 +52,85 @@ class _EditFarmScreenState extends ConsumerState<EditFarmScreen> {
     'Automated System',
   ];
 
+  final soilOptions = [
+    'In-ground',
+    'Raised Beds',
+    'Pots / Containers',
+    'Mixed',
+  ];
+
+  final mulchOptions = [
+    'Organic Mulch',
+    'Plastic Mulch',
+    'None',
+    'Other',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final farm = ref.read(farmProfileProvider);
+
+    _nameController = TextEditingController(text: farm.name);
+    _ownerController = TextEditingController(text: farm.owner);
+    _addressController = TextEditingController(text: farm.address);
+    _regionController = TextEditingController(text: farm.climateZone);
+    _notesController = TextEditingController(text: farm.notes);
+
+    _growingSystem = farm.growingSystem;
+    _trellisSystem = farm.trellisSystem;
+    _irrigationSystem = farm.irrigationSystem;
+    _soilType = farm.soilType;
+    _mulchType = farm.mulchType;
+
+    if (!growingOptions.contains(_growingSystem)) growingOptions.add(_growingSystem);
+    if (!trellisOptions.contains(_trellisSystem)) trellisOptions.add(_trellisSystem);
+    if (!irrigationOptions.contains(_irrigationSystem)) {
+      irrigationOptions.add(_irrigationSystem);
+    }
+    if (!soilOptions.contains(_soilType)) soilOptions.add(_soilType);
+    if (!mulchOptions.contains(_mulchType)) mulchOptions.add(_mulchType);
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
     _ownerController.dispose();
     _addressController.dispose();
     _regionController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
 
-    // TODO: Save to provider / database later
+    final current = ref.read(farmProfileProvider);
+
+    final updated = FarmProfile(
+      name: _nameController.text.trim(),
+      owner: _ownerController.text.trim(),
+      address: _addressController.text.trim(),
+      climateZone: _regionController.text.trim(),
+      growingSystem: _growingSystem,
+      trellisSystem: _trellisSystem,
+      irrigationSystem: _irrigationSystem,
+      cropType: current.cropType,
+      soilType: _soilType,
+      mulchType: _mulchType,
+      notes: _notesController.text.trim(),
+      latitude: current.latitude,
+      longitude: current.longitude,
+    );
+
+    ref.read(farmProfileProvider.notifier).update(updated);
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Farm profile updated successfully'),
+        content: Text('Farm profile updated'),
         backgroundColor: Colors.green,
       ),
     );
-
     context.pop();
   }
 
@@ -76,93 +140,94 @@ class _EditFarmScreenState extends ConsumerState<EditFarmScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primaryDark,
-        title: const Text('Edit Farm Profile'),
         foregroundColor: Colors.white,
+        title: const Text('Edit Farm Profile'),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            // Section: Basic Info
-            _sectionTitle('Basic Information'),
+            _title('Basic Information'),
             const SizedBox(height: 12),
-
-            _buildTextField(
+            _textField(
               controller: _nameController,
               label: 'Farm Name *',
               icon: Icons.agriculture,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Farm name is required';
-                }
-                return null;
-              },
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? 'Required' : null,
             ),
             const SizedBox(height: 14),
-
-            _buildTextField(
+            _textField(
               controller: _ownerController,
               label: 'Owner / Manager',
               icon: Icons.person,
             ),
             const SizedBox(height: 14),
-
-            _buildTextField(
+            _textField(
               controller: _addressController,
               label: 'Address / Location',
               icon: Icons.location_on,
               maxLines: 2,
             ),
             const SizedBox(height: 14),
-
-            _buildTextField(
+            _textField(
               controller: _regionController,
               label: 'Region / Climate Zone',
               icon: Icons.map,
             ),
-
             const SizedBox(height: 28),
-
-            // Section: Infrastructure
-            _sectionTitle('Infrastructure'),
+            _title('Infrastructure'),
             const SizedBox(height: 12),
-
-            _buildDropdown(
+            _dropdown(
               label: 'Growing System',
               value: _growingSystem,
               items: growingOptions,
               icon: Icons.wb_sunny,
-              onChanged: (value) {
-                setState(() => _growingSystem = value!);
-              },
+              onChanged: (v) => setState(() => _growingSystem = v!),
             ),
             const SizedBox(height: 14),
-
-            _buildDropdown(
-              label: 'Trellis / Support System',
+            _dropdown(
+              label: 'Trellis / Support',
               value: _trellisSystem,
               items: trellisOptions,
               icon: Icons.grid_view,
-              onChanged: (value) {
-                setState(() => _trellisSystem = value!);
-              },
+              onChanged: (v) => setState(() => _trellisSystem = v!),
             ),
             const SizedBox(height: 14),
-
-            _buildDropdown(
-              label: 'Irrigation System',
+            _dropdown(
+              label: 'Irrigation',
               value: _irrigationSystem,
               items: irrigationOptions,
               icon: Icons.water_drop,
-              onChanged: (value) {
-                setState(() => _irrigationSystem = value!);
-              },
+              onChanged: (v) => setState(() => _irrigationSystem = v!),
             ),
-
+            const SizedBox(height: 14),
+            _dropdown(
+              label: 'Soil / Growing Medium',
+              value: _soilType,
+              items: soilOptions,
+              icon: Icons.grass,
+              onChanged: (v) => setState(() => _soilType = v!),
+            ),
+            const SizedBox(height: 14),
+            _dropdown(
+              label: 'Mulch Type',
+              value: _mulchType,
+              items: mulchOptions,
+              icon: Icons.layers,
+              onChanged: (v) => setState(() => _mulchType = v!),
+            ),
+            const SizedBox(height: 28),
+            _title('Notes'),
+            const SizedBox(height: 12),
+            _textField(
+              controller: _notesController,
+              label: 'Notes',
+              icon: Icons.notes,
+              maxLines: 3,
+            ),
             const SizedBox(height: 36),
-
-            // Save Button
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -188,18 +253,14 @@ class _EditFarmScreenState extends ConsumerState<EditFarmScreen> {
     );
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _title(String text) {
     return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: AppColors.textPrimary,
-      ),
+      text,
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
     );
   }
 
-  Widget _buildTextField({
+  Widget _textField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
@@ -215,9 +276,7 @@ class _EditFarmScreenState extends ConsumerState<EditFarmScreen> {
         prefixIcon: Icon(icon),
         filled: true,
         fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -226,7 +285,7 @@ class _EditFarmScreenState extends ConsumerState<EditFarmScreen> {
     );
   }
 
-  Widget _buildDropdown({
+  Widget _dropdown({
     required String label,
     required String value,
     required List<String> items,
@@ -234,26 +293,21 @@ class _EditFarmScreenState extends ConsumerState<EditFarmScreen> {
     required void Function(String?) onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      initialValue: value,
+      value: value,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
         filled: true,
         fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
         ),
       ),
-      items: items.map((item) {
-        return DropdownMenuItem(
-          value: item,
-          child: Text(item),
-        );
-      }).toList(),
+      items: items
+          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+          .toList(),
       onChanged: onChanged,
     );
   }

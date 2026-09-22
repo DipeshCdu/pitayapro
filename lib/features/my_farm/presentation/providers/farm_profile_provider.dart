@@ -1,113 +1,93 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum GrowingSystemType { openField, greenhouse, shadeStructure }
-enum TrellisType { concrete, timber, tyre, tbar, potted, other }
-enum IrrigationType { drip, spray, flood, manual, automated }
-enum SoilType { sandy, loam, clay, improved }
-enum MulchType { organic, plastic, none }
+class FarmProfile {
+  final String name;
+  final String owner;
+  final String address;
+  final String climateZone;
+  final String growingSystem;
+  final String trellisSystem;
+  final String irrigationSystem;
+  final String cropType;
+  final String soilType;
+  final String mulchType;
+  final String notes;
+  final double? latitude;
+  final double? longitude;
 
-class FarmProfileData {
-  String farmName;
-  String ownerName;
-  String address;
-  double? latitude;
-  double? longitude;
-  String region;
-  GrowingSystemType growingSystem;
-  TrellisType trellisType;
-  IrrigationType irrigationType;
-  SoilType soilType;
-  MulchType mulchType;
-  String customTrellis;
-  String notes;
-
-  FarmProfileData({
-    this.farmName = '',
-    this.ownerName = '',
-    this.address = '',
+  const FarmProfile({
+    required this.name,
+    required this.owner,
+    required this.address,
+    required this.climateZone,
+    required this.growingSystem,
+    required this.trellisSystem,
+    required this.irrigationSystem,
+    this.cropType = 'Dragon Fruit',
+    this.soilType = 'In-ground',
+    this.mulchType = 'Organic Mulch',
+    this.notes = '',
     this.latitude,
     this.longitude,
-    this.region = '',
-    this.growingSystem = GrowingSystemType.openField,
-    this.trellisType = TrellisType.concrete,
-    this.irrigationType = IrrigationType.drip,
-    this.soilType = SoilType.loam,
-    this.mulchType = MulchType.organic,
-    this.customTrellis = '',
-    this.notes = '',
   });
 
-  FarmProfileData copyWith({
-    String? farmName,
-    String? ownerName,
+  FarmProfile copyWith({
+    String? name,
+    String? owner,
     String? address,
+    String? climateZone,
+    String? growingSystem,
+    String? trellisSystem,
+    String? irrigationSystem,
+    String? cropType,
+    String? soilType,
+    String? mulchType,
+    String? notes,
     double? latitude,
     double? longitude,
-    String? region,
-    GrowingSystemType? growingSystem,
-    TrellisType? trellisType,
-    IrrigationType? irrigationType,
-    SoilType? soilType,
-    MulchType? mulchType,
-    String? customTrellis,
-    String? notes,
   }) {
-    return FarmProfileData(
-      farmName: farmName ?? this.farmName,
-      ownerName: ownerName ?? this.ownerName,
+    return FarmProfile(
+      name: name ?? this.name,
+      owner: owner ?? this.owner,
       address: address ?? this.address,
-      latitude: latitude ?? this.latitude,
-      longitude: longitude ?? this.longitude,
-      region: region ?? this.region,
+      climateZone: climateZone ?? this.climateZone,
       growingSystem: growingSystem ?? this.growingSystem,
-      trellisType: trellisType ?? this.trellisType,
-      irrigationType: irrigationType ?? this.irrigationType,
+      trellisSystem: trellisSystem ?? this.trellisSystem,
+      irrigationSystem: irrigationSystem ?? this.irrigationSystem,
+      cropType: cropType ?? this.cropType,
       soilType: soilType ?? this.soilType,
       mulchType: mulchType ?? this.mulchType,
-      customTrellis: customTrellis ?? this.customTrellis,
       notes: notes ?? this.notes,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 }
 
-final farmProfileProvider = StateNotifierProvider<FarmProfileNotifier, FarmProfileData>((ref) {
-  return FarmProfileNotifier();
-});
+class FarmProfileNotifier extends StateNotifier<FarmProfile> {
+  FarmProfileNotifier()
+      : super(
+          const FarmProfile(
+            name: 'Pitaya Pro Farm',
+            owner: 'Ramesh',
+            address: 'Northern Territory, Australia',
+            climateZone: 'Tropical',
+            growingSystem: 'Open Field',
+            trellisSystem: 'T-bar Trellis',
+            irrigationSystem: 'Drip Irrigation',
+            cropType: 'Dragon Fruit',
+            soilType: 'In-ground',
+            mulchType: 'Organic Mulch',
+            notes: '',
+          ),
+        );
 
-class FarmProfileNotifier extends StateNotifier<FarmProfileData> {
-  FarmProfileNotifier() : super(FarmProfileData());
-
-  void updateFarmName(String name) => state = state.copyWith(farmName: name);
-  void updateOwnerName(String name) => state = state.copyWith(ownerName: name);
-  void updateAddress(String addr) => state = state.copyWith(address: addr);
-  void updateRegion(String region) => state = state.copyWith(region: region);
-  void updateGPS(double lat, double lng) {
-    state = state.copyWith(latitude: lat, longitude: lng);
-  }
-  void updateGrowingSystem(GrowingSystemType type) {
-    state = state.copyWith(growingSystem: type);
-  }
-  void updateTrellisType(TrellisType type) {
-    state = state.copyWith(trellisType: type);
-  }
-  void updateIrrigationType(IrrigationType type) {
-    state = state.copyWith(irrigationType: type);
-  }
-  void updateSoilType(SoilType type) {
-    state = state.copyWith(soilType: type);
-  }
-  void updateMulchType(MulchType type) {
-    state = state.copyWith(mulchType: type);
-  }
-  void updateCustomTrellis(String text) {
-    state = state.copyWith(customTrellis: text);
-  }
-  void updateNotes(String text) {
-    state = state.copyWith(notes: text);
-  }
-
-  void saveProfile() {
-    // TODO: Save to database/Supabase
-    print('Farm profile saved: ${state.farmName}');
+  void update(FarmProfile profile) {
+    state = profile;
   }
 }
+
+final farmProfileProvider =
+    StateNotifierProvider<FarmProfileNotifier, FarmProfile>((ref) {
+  return FarmProfileNotifier();
+});

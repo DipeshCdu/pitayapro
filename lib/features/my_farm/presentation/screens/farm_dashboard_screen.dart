@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pitayapro/core/widgets/app_bottom_nav.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_bottom_nav.dart';
 import '../providers/farm_map_provider.dart';
+import '../providers/farm_profile_provider.dart';
 import '../widgets/weather_card.dart';
 
 class FarmDashboardScreen extends ConsumerWidget {
@@ -12,6 +13,8 @@ class FarmDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final farm = ref.watch(farmProfileProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -35,11 +38,9 @@ class FarmDashboardScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // 1. Farm Profile Header
-          _buildFarmProfileCard(context),
+          _buildFarmProfileCard(context, farm),
           const SizedBox(height: 12),
 
-          // View Farm Map Button
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -58,32 +59,28 @@ class FarmDashboardScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // 2. Weather
           const WeatherCard(),
           const SizedBox(height: 16),
 
-          // 3. Infrastructure
-          _buildInfrastructureCard(),
+          _buildInfrastructureCard(farm),
           const SizedBox(height: 16),
 
-          // 4. Quick Stats
           _buildQuickStats(),
           const SizedBox(height: 16),
 
-          // 5. Quick Actions
           _buildQuickActions(context),
           const SizedBox(height: 16),
 
-          // 6. Recent Activity
           _buildRecentActivity(),
           const SizedBox(height: 24),
         ],
       ),
-bottomNavigationBar: const AppBottomNav(currentIndex: 1),    );
+      bottomNavigationBar: const AppBottomNav(currentIndex: 1),
+    );
   }
 
   // ====================== FARM PROFILE ======================
-  Widget _buildFarmProfileCard(BuildContext context) {
+  Widget _buildFarmProfileCard(BuildContext context, FarmProfile farm) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -115,9 +112,9 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 1),    );
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Pitaya Pro Farm',
-                      style: TextStyle(
+                    Text(
+                      farm.name,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -127,9 +124,11 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 1),    );
                       children: [
                         Icon(Icons.location_on, size: 15, color: Colors.grey.shade600),
                         const SizedBox(width: 4),
-                        Text(
-                          'Northern Territory, Australia',
-                          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                        Expanded(
+                          child: Text(
+                            farm.address,
+                            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                          ),
                         ),
                       ],
                     ),
@@ -142,9 +141,9 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 1),    );
                   color: AppColors.cardGreen,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
-                  'Dragon Fruit',
-                  style: TextStyle(
+                child: Text(
+                  farm.cropType,
+                  style: const TextStyle(
                     color: AppColors.success,
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
@@ -158,8 +157,8 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 1),    );
           const SizedBox(height: 12),
           Row(
             children: [
-              _infoItem(Icons.person, 'Owner', 'Ramesh'),
-              _infoItem(Icons.landscape, 'Climate', 'Tropical'),
+              _infoItem(Icons.person, 'Owner', farm.owner),
+              _infoItem(Icons.landscape, 'Climate', farm.climateZone),
               Consumer(
                 builder: (context, ref, child) {
                   final blocks = ref.watch(farmMapProvider);
@@ -190,7 +189,7 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 1),    );
   }
 
   // ====================== INFRASTRUCTURE ======================
-  Widget _buildInfrastructureCard() {
+  Widget _buildInfrastructureCard(FarmProfile farm) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -216,11 +215,11 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 1),    );
             spacing: 10,
             runSpacing: 10,
             children: [
-              _infraChip(Icons.wb_sunny, 'Open Field'),
-              _infraChip(Icons.grid_view, 'T-bar Trellis'),
-              _infraChip(Icons.water_drop, 'Drip Irrigation'),
-              _infraChip(Icons.grass, 'In-ground'),
-              _infraChip(Icons.layers, 'Organic Mulch'),
+              _infraChip(Icons.wb_sunny, farm.growingSystem),
+              _infraChip(Icons.grid_view, farm.trellisSystem),
+              _infraChip(Icons.water_drop, farm.irrigationSystem),
+              _infraChip(Icons.grass, farm.soilType),
+              _infraChip(Icons.layers, farm.mulchType),
             ],
           ),
         ],
@@ -349,7 +348,7 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 1),    );
               icon: Icons.grass,
               label: 'Fertilising',
               color: Colors.green,
-              onTap: () {},
+              onTap: () => context.go('/inputs'),
             ),
             const SizedBox(width: 12),
             _actionButton(
@@ -357,14 +356,15 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 1),    );
               icon: Icons.science,
               label: 'Soil Test',
               color: Colors.blue,
-onTap: () => context.go('/soil-tests'),            ),
+              onTap: () => context.go('/soil-tests'),
+            ),
             const SizedBox(width: 12),
             _actionButton(
               context,
               icon: Icons.content_cut,
               label: 'Pruning',
               color: Colors.orange,
-              onTap: () {},
+              onTap: () => context.go('/pruning'),
             ),
           ],
         ),
@@ -450,7 +450,13 @@ onTap: () => context.go('/soil-tests'),            ),
     );
   }
 
-  Widget _activityItem(IconData icon, String title, String subtitle, String time, Color color) {
+  Widget _activityItem(
+    IconData icon,
+    String title,
+    String subtitle,
+    String time,
+    Color color,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -478,6 +484,4 @@ onTap: () => context.go('/soil-tests'),            ),
       ),
     );
   }
-
-  
 }

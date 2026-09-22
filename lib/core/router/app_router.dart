@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pitayapro/features/insights/presentation/screens/insights_screen.dart';
 
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
@@ -19,6 +20,10 @@ import '../../features/soil_tests/presentation/screens/add_soil_test_screen.dart
 import '../../features/soil_tests/presentation/screens/soil_test_detail_screen.dart';
 import '../../features/inputs/presentation/screens/fertilising_detail_screen.dart';
 import '../../features/inputs/presentation/screens/edit_fertilising_screen.dart';
+import '../../features/insights/presentation/screens/insights_screen.dart';
+import '../../features/pruning/presentation/screens/pruning_list_screen.dart';
+import '../../features/pruning/presentation/screens/add_pruning_screen.dart';
+import '../../features/pruning/presentation/screens/pruning_detail_screen.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/home',
@@ -78,6 +83,13 @@ GoRoute(
 GoRoute(
   path: '/insights',
   builder: (context, state) => const InsightsScreen(),
+),
+
+GoRoute(path: '/pruning', builder: (c, s) => const PruningListScreen()),
+GoRoute(path: '/pruning/add', builder: (c, s) => const AddPruningScreen()),
+GoRoute(
+  path: '/pruning/:id',
+  builder: (c, s) => PruningDetailScreen(recordId: s.pathParameters['id']!),
 ),
     ],
   );
