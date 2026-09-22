@@ -17,6 +17,8 @@ import '../../features/inputs/presentation/screens/add_fertilising_screen.dart';
 import '../../features/soil_tests/presentation/screens/soil_test_list_screen.dart';
 import '../../features/soil_tests/presentation/screens/add_soil_test_screen.dart';
 import '../../features/soil_tests/presentation/screens/soil_test_detail_screen.dart';
+import '../../features/inputs/presentation/screens/fertilising_detail_screen.dart';
+import '../../features/inputs/presentation/screens/edit_fertilising_screen.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/home',
@@ -53,18 +55,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       // Inputs
-      GoRoute(path: '/inputs', builder: (c, s) => const FertilisingListScreen()),
-      GoRoute(path: '/inputs/add', builder: (c, s) => const AddFertilisingScreen()),
+      // Inputs
+// Inputs
+GoRoute(path: '/inputs', builder: (c, s) => const FertilisingListScreen()),
+GoRoute(path: '/inputs/add', builder: (c, s) => const AddFertilisingScreen()),
+GoRoute(
+  path: '/inputs/edit/:id',
+  builder: (c, s) => EditFertilisingScreen(recordId: s.pathParameters['id']!),
+),
+GoRoute(
+  path: '/inputs/:id',
+  builder: (c, s) => FertilisingDetailScreen(recordId: s.pathParameters['id']!),
+),
 
-      // Soil Tests
-      GoRoute(path: '/soil-tests', builder: (c, s) => const SoilTestListScreen()),
-      GoRoute(path: '/soil-tests/add', builder: (c, s) => const AddSoilTestScreen()),
-      GoRoute(
+// Soil Tests
+GoRoute(path: '/soil-tests', builder: (c, s) => const SoilTestListScreen()),
+GoRoute(path: '/soil-tests/add', builder: (c, s) => const AddSoilTestScreen()),
+GoRoute(
   path: '/soil-tests/:id',
-  builder: (context, state) {
-    final id = state.pathParameters['id']!;
-    return SoilTestDetailScreen(recordId: id);
-  },
+  builder: (c, s) => SoilTestDetailScreen(recordId: s.pathParameters['id']!),
+),
+GoRoute(
+  path: '/insights',
+  builder: (context, state) => const InsightsScreen(),
 ),
     ],
   );
