@@ -7,6 +7,26 @@ import '../../../../core/widgets/app_bottom_nav.dart';
 import '../providers/farm_map_provider.dart';
 import '../providers/farm_profile_provider.dart';
 import '../widgets/weather_card.dart';
+import '../../../flowering/presentation/providers/flowering_provider.dart';
+import '../../../inputs/presentation/providers/fertilising_provider.dart';
+import '../../../pruning/presentation/providers/pruning_provider.dart';
+import '../../../soil_tests/presentation/providers/soil_test_provider.dart';
+
+class ActivityItem {
+  final String title;
+  final String subtitle;
+  final DateTime date;
+  final IconData icon;
+  final Color color;
+
+  ActivityItem({
+    required this.title,
+    required this.subtitle,
+    required this.date,
+    required this.icon,
+    required this.color,
+  });
+}
 
 class FarmDashboardScreen extends ConsumerWidget {
   const FarmDashboardScreen({super.key});
@@ -14,6 +34,78 @@ class FarmDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final farm = ref.watch(farmProfileProvider);
+    final blocks = ref.watch(farmMapProvider);
+    final flowering = ref.watch(floweringListProvider);
+    final fertilising = ref.watch(fertilisingListProvider);
+    final pruning = ref.watch(pruningListProvider);
+    final soilTests = ref.watch(soilTestListProvider);
+
+    // Quick stats
+    final blocksCount = blocks.length;
+    final floweringCount = flowering.length;
+    final floweringNow =
+        flowering.where((e) => e.status == 'Flowering').length;
+    final harvestedCount =
+        flowering.where((e) => e.status == 'Harvested').length;
+    final fertiliserCount = fertilising.length;
+    final pruningCount = pruning.length;
+    final soilCount = soilTests.length;
+
+    // Recent activity
+    final activities = <ActivityItem>[];
+
+    for (final e in flowering) {
+      final date =
+          e.harvestDate ?? e.floweringDate ?? e.buddingDate ?? DateTime.now();
+      activities.add(
+        ActivityItem(
+          title: 'Flowering: ${e.variety}',
+          subtitle: '${e.block} · ${e.status}',
+          date: date,
+          icon: Icons.local_florist,
+          color: Colors.pink,
+        ),
+      );
+    }
+
+    for (final r in fertilising) {
+      activities.add(
+        ActivityItem(
+          title: 'Fertiliser Applied',
+          subtitle: '${r.fertiliserName} · ${r.block}',
+          date: r.applicationDate,
+          icon: Icons.grass,
+          color: Colors.green,
+        ),
+      );
+    }
+
+    for (final r in pruning) {
+      activities.add(
+        ActivityItem(
+          title: 'Pruning Done',
+          subtitle: '${r.block} · ${r.pruningType}',
+          date: r.pruningDate,
+          icon: Icons.content_cut,
+          color: Colors.orange,
+        ),
+      );
+    }
+
+    for (final r in soilTests) {
+      activities.add(
+        ActivityItem(
+          title: 'Soil Test',
+          subtitle: '${r.block} · ${r.overallStatus.name}',
+          date: r.testDate,
+          icon: Icons.science,
+          color: Colors.blue,
+        ),
+      );
+    }
+
+    activities.sort((a, b) => b.date.compareTo(a.date));
+    final recent = activities.take(5).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -38,9 +130,8 @@ class FarmDashboardScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildFarmProfileCard(context, farm),
+          _buildFarmProfileCard(context, farm, blocksCount),
           const SizedBox(height: 12),
-
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -58,20 +149,23 @@ class FarmDashboardScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-
           const WeatherCard(),
           const SizedBox(height: 16),
-
           _buildInfrastructureCard(farm),
           const SizedBox(height: 16),
-
-          _buildQuickStats(),
+          _buildQuickStats(
+            blocksCount: blocksCount,
+            floweringCount: floweringCount,
+            floweringNow: floweringNow,
+            harvestedCount: harvestedCount,
+            fertiliserCount: fertiliserCount,
+            pruningCount: pruningCount,
+            soilCount: soilCount,
+          ),
           const SizedBox(height: 16),
-
           _buildQuickActions(context),
           const SizedBox(height: 16),
-
-          _buildRecentActivity(),
+          _buildRecentActivity(recent),
           const SizedBox(height: 24),
         ],
       ),
@@ -79,8 +173,12 @@ class FarmDashboardScreen extends ConsumerWidget {
     );
   }
 
-  // ====================== FARM PROFILE ======================
-  Widget _buildFarmProfileCard(BuildContext context, FarmProfile farm) {
+  // ====================== PROFILE ======================
+  Widget _buildFarmProfileCard(
+    BuildContext context,
+    FarmProfile farm,
+    int blocksCount,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -105,7 +203,11 @@ class FarmDashboardScreen extends ConsumerWidget {
                   color: AppColors.cardGreen,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.agriculture, color: AppColors.primary, size: 30),
+                child: const Icon(
+                  Icons.agriculture,
+                  color: AppColors.primary,
+                  size: 30,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -122,12 +224,16 @@ class FarmDashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.location_on, size: 15, color: Colors.grey.shade600),
+                        Icon(Icons.location_on,
+                            size: 15, color: Colors.grey.shade600),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             farm.address,
-                            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                            ),
                           ),
                         ),
                       ],
@@ -136,7 +242,8 @@ class FarmDashboardScreen extends ConsumerWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.cardGreen,
                   borderRadius: BorderRadius.circular(20),
@@ -159,14 +266,9 @@ class FarmDashboardScreen extends ConsumerWidget {
             children: [
               _infoItem(Icons.person, 'Owner', farm.owner),
               _infoItem(Icons.landscape, 'Climate', farm.climateZone),
-              Consumer(
-                builder: (context, ref, child) {
-                  final blocks = ref.watch(farmMapProvider);
-                  return GestureDetector(
-                    onTap: () => context.push('/my-farm/blocks'),
-                    child: _infoItem(Icons.map, 'Blocks', '${blocks.length}'),
-                  );
-                },
+              GestureDetector(
+                onTap: () => context.push('/my-farm/blocks'),
+                child: _infoItem(Icons.map, 'Blocks', '$blocksCount'),
               ),
             ],
           ),
@@ -181,8 +283,14 @@ class FarmDashboardScreen extends ConsumerWidget {
         children: [
           Icon(icon, size: 20, color: AppColors.primary),
           const SizedBox(height: 6),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          ),
         ],
       ),
     );
@@ -222,6 +330,13 @@ class FarmDashboardScreen extends ConsumerWidget {
               _infraChip(Icons.layers, farm.mulchType),
             ],
           ),
+          if (farm.notes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              farm.notes,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            ),
+          ],
         ],
       ),
     );
@@ -252,8 +367,16 @@ class FarmDashboardScreen extends ConsumerWidget {
     );
   }
 
-  // ====================== QUICK STATS ======================
-  Widget _buildQuickStats() {
+  // ====================== QUICK STATS (DYNAMIC) ======================
+  Widget _buildQuickStats({
+    required int blocksCount,
+    required int floweringCount,
+    required int floweringNow,
+    required int harvestedCount,
+    required int fertiliserCount,
+    required int pruningCount,
+    required int soilCount,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -277,17 +400,53 @@ class FarmDashboardScreen extends ConsumerWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              _statCard('Total Plants', '2,450', Icons.eco, Colors.green),
+              _statCard('Blocks', '$blocksCount', Icons.map, Colors.teal),
               const SizedBox(width: 12),
-              _statCard('Flowering', '320', Icons.local_florist, Colors.pink),
+              _statCard(
+                'Flowering',
+                '$floweringCount',
+                Icons.local_florist,
+                Colors.pink,
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              _statCard('Fruiting', '615', Icons.spa, Colors.orange),
+              _statCard('In Flower', '$floweringNow', Icons.spa, Colors.orange),
               const SizedBox(width: 12),
-              _statCard('Healthy', '2,210', Icons.check_circle, Colors.teal),
+              _statCard(
+                'Harvested',
+                '$harvestedCount',
+                Icons.check_circle,
+                Colors.green,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _statCard(
+                'Fertiliser',
+                '$fertiliserCount',
+                Icons.grass,
+                Colors.lightGreen,
+              ),
+              const SizedBox(width: 12),
+              _statCard(
+                'Pruning',
+                '$pruningCount',
+                Icons.content_cut,
+                Colors.brown,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _statCard('Soil Tests', '$soilCount', Icons.science, Colors.blue),
+              const SizedBox(width: 12),
+              Expanded(child: Container()),
             ],
           ),
         ],
@@ -410,8 +569,8 @@ class FarmDashboardScreen extends ConsumerWidget {
     );
   }
 
-  // ====================== RECENT ACTIVITY ======================
-  Widget _buildRecentActivity() {
+  // ====================== RECENT ACTIVITY (DYNAMIC) ======================
+  Widget _buildRecentActivity(List<ActivityItem> recent) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -428,35 +587,27 @@ class FarmDashboardScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Recent Activity',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              Text(
-                'View All',
-                style: TextStyle(color: AppColors.primary, fontSize: 13),
-              ),
-            ],
+          const Text(
+            'Recent Activity',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          _activityItem(Icons.water_drop, 'Irrigation Completed', 'Sector A1', 'Today', Colors.blue),
-          _activityItem(Icons.grass, 'Fertiliser Applied', 'Organic Booster', 'Yesterday', Colors.green),
-          _activityItem(Icons.content_cut, 'Pruning Done', 'Block B2', '2 days ago', Colors.orange),
+          if (recent.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'No activity yet. Add flowering, fertilising, pruning, or soil tests.',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              ),
+            )
+          else
+            ...recent.map(_activityRow),
         ],
       ),
     );
   }
 
-  Widget _activityItem(
-    IconData icon,
-    String title,
-    String subtitle,
-    String time,
-    Color color,
-  ) {
+  Widget _activityRow(ActivityItem item) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -464,24 +615,43 @@ class FarmDashboardScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: item.color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(item.icon, color: item.color, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                Text(
+                  item.title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  item.subtitle,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
               ],
             ),
           ),
-          Text(time, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+          Text(
+            _formatTime(item.date),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          ),
         ],
       ),
     );
+  }
+
+  String _formatTime(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inDays == 0) return 'Today';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays} days ago';
+    return '${date.day}/${date.month}/${date.year}';
   }
 }

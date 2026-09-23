@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../my_farm/presentation/providers/weather_provider.dart';
-import '../../../flowering/presentation/providers/flowering_provider.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
+import '../../../my_farm/presentation/providers/weather_provider.dart';
+import '../../../my_farm/presentation/providers/farm_profile_provider.dart';
+import '../../../flowering/presentation/providers/flowering_provider.dart';
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -13,6 +15,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final weatherAsync = ref.watch(weatherProvider);
     final floweringEvents = ref.watch(floweringListProvider);
+    final farm = ref.watch(farmProfileProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -43,15 +46,10 @@ class HomeScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Greeting
-          _buildGreeting(context),
+          _buildGreeting(context, farm.owner),
           const SizedBox(height: 16),
-
-          // Weather
           _buildWeatherSummary(weatherAsync),
           const SizedBox(height: 20),
-
-          // Quick Access
           const Text(
             'Quick Access',
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
@@ -59,8 +57,6 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           _buildQuickAccess(context),
           const SizedBox(height: 24),
-
-          // Recent Flowering
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -77,17 +73,16 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           _buildFloweringOverview(floweringEvents),
           const SizedBox(height: 20),
-
-          // Tip
           _buildTipCard(),
           const SizedBox(height: 30),
         ],
       ),
-bottomNavigationBar: const AppBottomNav(currentIndex: 0),    );
+      bottomNavigationBar: const AppBottomNav(currentIndex: 0),
+    );
   }
 
   // ====================== GREETING ======================
-  Widget _buildGreeting(BuildContext context) {
+  Widget _buildGreeting(BuildContext context, String ownerName) {
     return Row(
       children: [
         Container(
@@ -105,9 +100,12 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 0),    );
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Good day, Ramesh',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                'Good day, $ownerName',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               Text(
                 'Here’s your farm overview',
@@ -210,13 +208,13 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 0),    );
         'icon': Icons.agriculture,
         'label': 'My Farm',
         'color': Colors.green,
-        'route': '/my-farm'
+        'route': '/my-farm',
       },
       {
         'icon': Icons.local_florist,
         'label': 'Flowering',
         'color': Colors.pink,
-        'route': '/flowering'
+        'route': '/flowering',
       },
       {
         'icon': Icons.grass,
@@ -237,9 +235,8 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 0),    );
         return Expanded(
           child: GestureDetector(
             onTap: () {
-              if (item['route'] != null) {
-                context.go(item['route'] as String);
-              }
+              final route = item['route'] as String?;
+              if (route != null) context.go(route);
             },
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -412,6 +409,4 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 0),    );
       ),
     );
   }
-
-  
 }
