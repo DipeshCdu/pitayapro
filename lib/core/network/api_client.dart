@@ -5,8 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ApiClient {
   static const String baseUrl = 'https://pitaya-pro.onrender.com';
-  
-  // 70 seconds timeout to allow for Render.com cold starts
   static const Duration _timeout = Duration(seconds: 70);
 
   Future<String?> getToken() async {
@@ -26,39 +24,45 @@ class ApiClient {
     await prefs.remove('refreshToken');
   }
 
-  Future<http.Response> post(String endpoint, Map<String, dynamic> body, {bool requiresAuth = false}) async {
-    final headers = {
-      'Content-Type': 'application/json',
-      if (requiresAuth) 'Authorization': 'Bearer ${await getToken()}',
-    };
-
-    print('🌐 [API] POST $endpoint | Body: $body');
-
-    final response = await http.post(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-      body: body.isNotEmpty ? jsonEncode(body) : null,
-    ).timeout(_timeout);
-
-    print('📡 [API] Response Status: ${response.statusCode} | Body: ${response.body}');
-    return response;
+  Future<Map<String, String>> _getHeaders({bool requiresAuth = true}) async {
+    final headers = {'Content-Type': 'application/json'};
+    if (requiresAuth) {
+      final token = await getToken();
+      if (token != null) headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
   }
 
-  Future<http.Response> get(String endpoint, {bool requiresAuth = true}) async {
-    final headers = {
-      'Content-Type': 'application/json',
-      if (requiresAuth) 'Authorization': 'Bearer ${await getToken()}',
-    };
-
-    print('🌐 [API] GET $endpoint');
-
-    final response = await http.get(
+  Future<http.Response> get(String endpoint) async {
+    return http.get(
       Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
+      headers: await _getHeaders(),
     ).timeout(_timeout);
+  }
 
-    print('📡 [API] Response Status: ${response.statusCode} | Body: ${response.body}');
-    return response;
+  Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
+    return http.post(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: await _getHeaders(requiresAuth: !endpoint.contains('/auth/')), // Auth endpoints don't need token
+      body: jsonEncode(body),
+    ).timeout(_timeout);
+  }
+
+  // 👇 ADDED PUT for Updates
+  Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
+    return http.put(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: await _getHeaders(),
+      body: jsonEncode(body),
+    ).timeout(_timeout);
+  }
+
+  // 👇 ADDED DELETE for Deletions
+  Future<http.Response> delete(String endpoint) async {
+    return http.delete(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: await _getHeaders(),
+    ).timeout(_timeout);
   }
 }
 
