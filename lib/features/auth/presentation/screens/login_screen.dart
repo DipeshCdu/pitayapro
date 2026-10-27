@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../providers/auth_provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -28,16 +28,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    await ref.read(authNotifierProvider.notifier).signIn(
-          email: _emailController.text,
+    await ref.read(authNotifierProvider.notifier).login(
+          email: _emailController.text.trim(),
           password: _passwordController.text,
         );
 
+    if (!mounted) return;
+
     final state = ref.read(authNotifierProvider);
-    if (state.hasError && mounted) {
+    if (state.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(state.error.toString()),
+          content: Text(state.error!),
           backgroundColor: Colors.red,
         ),
       );
@@ -58,47 +60,50 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Form(
               key: _formKey,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo / Title
-                  Icon(Icons.agriculture, size: 80, color: AppColors.primary),
-                  const SizedBox(height: 16),
+                  const Icon(
+                    Icons.agriculture,
+                    size: 64,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(height: 12),
                   const Text(
                     'Pitaya Pro',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Sign in to your farm account',
+                    'Sign in to continue',
+                    textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
-                  const SizedBox(height: 40),
-
-                  // Email
+                  const SizedBox(height: 32),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Email is required';
                       }
-                      if (!value.contains('@')) {
-                        return 'Please enter a valid email';
-                      }
+                      if (!v.contains('@')) return 'Enter a valid email';
                       return null;
                     },
                   ),
                   const SizedBox(height: 16),
-
-                  // Password
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
@@ -112,30 +117,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               : Icons.visibility,
                         ),
                         onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
+                          setState(() => _obscurePassword = !_obscurePassword);
                         },
                       ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
-                      }
-                      if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Password is required';
                       return null;
                     },
                   ),
                   const SizedBox(height: 24),
-
-                  // Login Button
                   SizedBox(
-                    width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
                       onPressed: isLoading ? null : _login,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                       child: isLoading
                           ? const SizedBox(
                               height: 22,
@@ -151,15 +158,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'First open may take up to a minute while the server wakes up.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
                   const SizedBox(height: 20),
-
-                  // Go to Register
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text("Don't have an account?"),
                       TextButton(
-                        onPressed: () => context.push('/register'),
+                        onPressed:
+                            isLoading ? null : () => context.push('/register'),
                         child: const Text('Register'),
                       ),
                     ],
