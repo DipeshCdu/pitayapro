@@ -28,6 +28,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // 1. Call the login provider
     await ref.read(authNotifierProvider.notifier).login(
           email: _emailController.text.trim(),
           password: _passwordController.text,
@@ -35,7 +36,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (!mounted) return;
 
+    // 2. Check the result and navigate
     final state = ref.read(authNotifierProvider);
+    
     if (state.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -43,6 +46,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    } 
+    // 👇 3. IF SUCCESSFUL, GO TO HOME SCREEN
+    else if (state.isAuthenticated) {
+      context.go('/home'); 
     }
   }
 

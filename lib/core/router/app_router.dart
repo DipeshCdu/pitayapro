@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -31,17 +32,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/login',
     redirect: (context, state) {
-      final status = auth.status;
+      // 👇 UPDATED LOGIC: Use isAuthenticated boolean instead of AuthStatus enum
+      final isAuthenticated = auth.isAuthenticated;
       final loc = state.matchedLocation;
       final isAuthRoute = loc == '/login' || loc == '/register';
 
-      if (status == AuthStatus.unknown) return null;
-
-      if (status == AuthStatus.unauthenticated && !isAuthRoute) {
+      // If not authenticated and trying to go to a protected route, send to login
+      if (!isAuthenticated && !isAuthRoute) {
         return '/login';
       }
 
-      if (status == AuthStatus.authenticated && isAuthRoute) {
+      // If authenticated and trying to go to login/register, send to home
+      if (isAuthenticated && isAuthRoute) {
         return '/home';
       }
 
