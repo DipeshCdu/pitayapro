@@ -1,137 +1,160 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import 'package:pitayapro/core/widgets/status_chip.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../flowering_event/data/models/flowering_event_model.dart';
 import '../providers/flowering_provider.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class EditFloweringScreen extends ConsumerStatefulWidget {
   final String eventId;
-
   const EditFloweringScreen({super.key, required this.eventId});
 
   @override
-  ConsumerState<EditFloweringScreen> createState() => _EditFloweringScreenState();
+  ConsumerState<EditFloweringScreen> createState() =>
+      _EditFloweringScreenState();
 }
 
 class _EditFloweringScreenState extends ConsumerState<EditFloweringScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _varietyController;
-  late TextEditingController _blockController;
+  late TextEditingController _locationController;
   late TextEditingController _pollenVarietyController;
-  late TextEditingController _fruitSetController;
-  late TextEditingController _fruitAbortedController;
-  late TextEditingController _weightController;
-  late TextEditingController _brixController;
-  late TextEditingController _priceController;
   late TextEditingController _notesController;
 
-  late String _status;
-  String? _pollinationMethod;
-  DateTime? _buddingDate;
-  DateTime? _floweringDate;
-  DateTime? _harvestDate;
+  DateTime? _flowerDate;
+  DateTime? _budDate;
+  String _pollinationMethod = 'Hand-pollinated';
+  int _fruitSet = 0;
+  double _brixScore = 0.0;
+  EventStatus _status = EventStatus.flowering;
+  bool _isSubmitting = false;
 
-  final List<String> _statusOptions = ['Budding', 'Flowering', 'Harvested'];
-  final List<String> _pollinationOptions = [
-    'Self-pollinated',
-    'Hand-pollinated',
-    'Cross-pollinated',
-    'Open-pollinated',
-    'Bee / insect-pollinated',
-    'Not pollinated',
-    'Unknown',
+  final List<String> _varieties = [
+    'Pink Dragon', 'American Beauty', 'Condor', 'Sugar Dragon', 'Physical Graffiti'
+  ];
+
+  final List<String> _locations = [
+    'Work - Row 1', 'Work - Row 2', 'Home - Front Fence', 'Home - Dam'
+  ];
+
+  final List<String> _pollenVarieties = [
+    'American Beauty', 'Condor', 'Pink Dragon', 'Self-pollinated'
   ];
 
   @override
   void initState() {
     super.initState();
+    _loadExistingEvent();
+  }
 
+  void _loadExistingEvent() {
     final events = ref.read(floweringListProvider);
-    final event = events.firstWhere((e) => e.id == widget.eventId);
+    final event = events.where((e) => e.id == widget.eventId).toList();
 
-    _varietyController = TextEditingController(text: event.variety);
-    _blockController = TextEditingController(text: event.block);
-    _pollenVarietyController = TextEditingController(text: event.pollenVariety ?? '');
-    _fruitSetController = TextEditingController(text: event.fruitSet?.toString() ?? '');
-    _fruitAbortedController = TextEditingController(text: event.fruitAborted?.toString() ?? '');
-    _weightController = TextEditingController(text: event.totalWeightKg?.toString() ?? '');
-    _brixController = TextEditingController(text: event.averageBrix?.toString() ?? '');
-    _priceController = TextEditingController(text: event.salePricePerKg?.toString() ?? '');
-    _notesController = TextEditingController(text: event.notes ?? '');
+    if (event.isEmpty) return;
+    final e = event.first;
 
-    _status = event.status;
-    _pollinationMethod = event.pollinationMethod;
-    _buddingDate = event.buddingDate;
-    _floweringDate = event.floweringDate;
-    _harvestDate = event.harvestDate;
+    _varietyController = TextEditingController(text: e.varietyName);
+    _locationController = TextEditingController(text: '${e.block} - ${e.row}');
+    _pollenVarietyController = TextEditingController(text: e.pollenVariety ?? '');
+    _notesController = TextEditingController(text: e.growerNotes ?? '');
+
+    _flowerDate = e.flowerDate;
+    _budDate = e.budDate;
+    _pollinationMethod = e.pollinationMethod;
+    _fruitSet = e.fruitSet;
+    _brixScore = e.brixScore;
+    _status = e.status;
   }
 
   @override
   void dispose() {
     _varietyController.dispose();
-    _blockController.dispose();
+    _locationController.dispose();
     _pollenVarietyController.dispose();
-    _fruitSetController.dispose();
-    _fruitAbortedController.dispose();
-    _weightController.dispose();
-    _brixController.dispose();
-    _priceController.dispose();
     _notesController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickDate({
-    required DateTime? current,
-    required Function(DateTime) onPicked,
-  }) async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: current ?? now,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(now.year + 2),
-    );
-    if (picked != null) onPicked(picked);
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-  void _save() {
+  Future<void> _selectFlowerDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _flowerDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(primary: AppColors.primary),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _flowerDate = picked;
+        _budDate = picked.subtract(const Duration(days: 30));
+      });
+    }
+  }
+
+  void _submitForm() {
     if (!_formKey.currentState!.validate()) return;
+    if (_flowerDate == null || _budDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a flowering date'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    final locationParts = _locationController.text.split(' - ');
+    final block = locationParts.length > 0 ? locationParts[0] : 'Unknown';
+    final row = locationParts.length > 1 ? locationParts[1] : 'Unknown';
 
     final updatedEvent = FloweringEvent(
       id: widget.eventId,
-      variety: _varietyController.text.trim(),
-      block: _blockController.text.trim(),
+      varietyName: _varietyController.text,
+      block: block,
+      row: row,
       status: _status,
-      buddingDate: _buddingDate,
-      floweringDate: _floweringDate,
-      harvestDate: _harvestDate,
+      budDate: _budDate!,
+      flowerDate: _flowerDate!,
       pollinationMethod: _pollinationMethod,
-      pollenVariety: _pollenVarietyController.text.trim().isEmpty
-          ? null
-          : _pollenVarietyController.text.trim(),
-      fruitSet: int.tryParse(_fruitSetController.text),
-      fruitAborted: int.tryParse(_fruitAbortedController.text),
-      totalWeightKg: double.tryParse(_weightController.text),
-      averageBrix: double.tryParse(_brixController.text),
-      salePricePerKg: double.tryParse(_priceController.text),
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
+      pollenVariety:
+          _pollinationMethod == 'Hand-pollinated' ? _pollenVarietyController.text : null,
+      fruitSet: _fruitSet,
+      brixScore: _brixScore,
+      moonPhaseAtFlowering: 'Waxing Crescent',
+      growerNotes: _notesController.text.isEmpty ? null : _notesController.text,
     );
 
+    // ✅ Call the new updateEvent method
     ref.read(floweringListProvider.notifier).updateEvent(updatedEvent);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Flowering event updated'),
-        backgroundColor: Colors.green,
-      ),
-    );
-
-    context.pop();
+    Future.delayed(const Duration(milliseconds: 500), () {
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Flowering event updated!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      context.pop();
+    });
   }
 
   @override
@@ -140,265 +163,284 @@ class _EditFloweringScreenState extends ConsumerState<EditFloweringScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primaryDark,
-        foregroundColor: Colors.white,
-        title: const Text('Edit Flowering Event'),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => context.pop(),
+        ),
+        title: const Text(
+          'Edit Flowering Event',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           children: [
-            _sectionTitle('Basic Information'),
-            const SizedBox(height: 12),
-
-            _textField(
+            _buildDropdownField(
               controller: _varietyController,
-              label: 'Variety Name *',
-              icon: Icons.local_florist,
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+              label: 'Variety',
+              items: _varieties,
+              icon: Icons.eco,
             ),
-            const SizedBox(height: 12),
-
-            _textField(
-              controller: _blockController,
-              label: 'Block / Location *',
-              icon: Icons.grid_view,
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+            const SizedBox(height: 16),
+            _buildDropdownField(
+              controller: _locationController,
+              label: 'Location (Site / Row)',
+              items: _locations,
+              icon: Icons.location_on_outlined,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 24),
 
-            _dropdown(
-              label: 'Status',
+            // Flowering Date
+            _buildDatePickerField(
+              label: 'Flowering Date *',
+              date: _flowerDate,
+              onTap: _selectFlowerDate,
+              icon: Icons.calendar_today,
+            ),
+            const SizedBox(height: 16),
+
+            // Auto-calculated Bud Date
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.auto_awesome, color: AppColors.primary, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Estimated Bud Date',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _budDate != null ? _formatDate(_budDate!) : 'Select a flowering date first',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _budDate != null ? AppColors.textPrimary : AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Status Dropdown
+            DropdownButtonFormField<EventStatus>(
               value: _status,
-              items: _statusOptions,
+              decoration: const InputDecoration(
+                labelText: 'Status',
+                prefixIcon: Icon(Icons.flag, color: AppColors.primary),
+                border: OutlineInputBorder(),
+              ),
+              items: EventStatus.values.map((s) {
+                return DropdownMenuItem(
+                  value: s,
+                  child: Text(s.name),
+                );
+              }).toList(),
               onChanged: (v) => setState(() => _status = v!),
             ),
+            const SizedBox(height: 16),
 
-            const SizedBox(height: 24),
-            _sectionTitle('Dates'),
+            // Pollination
+            const Text(
+              'Pollination Details',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            ),
             const SizedBox(height: 12),
+            _buildDropdownField(
+              controller: TextEditingController(text: _pollinationMethod),
+              label: 'Method',
+              items: const ['Hand-pollinated', 'Self-pollinated', 'Wind'],
+              icon: Icons.touch_app,
+              onChanged: (value) {
+                setState(() {
+                  _pollinationMethod = value!;
+                  if (_pollinationMethod != 'Hand-pollinated') {
+                    _pollenVarietyController.clear();
+                  }
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+            if (_pollinationMethod == 'Hand-pollinated') ...[
+              _buildDropdownField(
+                controller: _pollenVarietyController,
+                label: 'Pollen Variety Used',
+                items: _pollenVarieties,
+                icon: Icons.grain,
+              ),
+              const SizedBox(height: 24),
+            ],
 
-            _dateTile(
-              title: 'Budding Date',
-              date: _buddingDate,
-              onTap: () => _pickDate(
-                current: _buddingDate,
-                onPicked: (d) => setState(() => _buddingDate = d),
+            // Fruit Set
+            const Text(
+              'Fruit Set',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.divider),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Number of fruits set', style: TextStyle(color: AppColors.textSecondary)),
+                  Row(
+                    children: [
+                      _buildCounterButton(Icons.remove, () {
+                        if (_fruitSet > 0) setState(() => _fruitSet--);
+                      }),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          '$_fruitSet',
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      _buildCounterButton(Icons.add, () => setState(() => _fruitSet++)),
+                    ],
+                  ),
+                ],
               ),
             ),
-            _dateTile(
-              title: 'Flowering Date',
-              date: _floweringDate,
-              onTap: () => _pickDate(
-                current: _floweringDate,
-                onPicked: (d) => setState(() => _floweringDate = d),
+            const SizedBox(height: 24),
+
+            // Brix Score
+            TextFormField(
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              initialValue: _brixScore.toString(),
+              decoration: const InputDecoration(
+                labelText: 'Brix Score',
+                prefixIcon: Icon(Icons.water_drop, color: AppColors.primary),
+                border: OutlineInputBorder(),
               ),
+              onChanged: (v) {
+                final parsed = double.tryParse(v);
+                if (parsed != null) _brixScore = parsed;
+              },
             ),
-            _dateTile(
-              title: 'Harvest Date',
-              date: _harvestDate,
-              onTap: () => _pickDate(
-                current: _harvestDate,
-                onPicked: (d) => setState(() => _harvestDate = d),
-              ),
-            ),
-
             const SizedBox(height: 24),
-            _sectionTitle('Pollination'),
-            const SizedBox(height: 12),
 
-            _dropdown(
-              label: 'Pollination Method',
-              value: _pollinationMethod,
-              items: _pollinationOptions,
-              onChanged: (v) => setState(() => _pollinationMethod = v),
-              isOptional: true,
-            ),
-            const SizedBox(height: 12),
-
-            _textField(
-              controller: _pollenVarietyController,
-              label: 'Pollen Variety (optional)',
-              icon: Icons.spa,
-            ),
-
-            const SizedBox(height: 24),
-            _sectionTitle('Fruit Results'),
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _textField(
-                    controller: _fruitSetController,
-                    label: 'Fruit Set',
-                    icon: Icons.check_circle_outline,
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _textField(
-                    controller: _fruitAbortedController,
-                    label: 'Fruit Aborted',
-                    icon: Icons.cancel_outlined,
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _textField(
-                    controller: _weightController,
-                    label: 'Total Weight (kg)',
-                    icon: Icons.scale,
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _textField(
-                    controller: _brixController,
-                    label: 'Brix',
-                    icon: Icons.opacity,
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            _textField(
-              controller: _priceController,
-              label: 'Sale Price per kg (\$)',
-              icon: Icons.attach_money,
-              keyboardType: TextInputType.number,
-            ),
-
-            const SizedBox(height: 24),
-            _sectionTitle('Notes'),
-            const SizedBox(height: 12),
-
-            _textField(
+            // Notes
+            TextFormField(
               controller: _notesController,
-              label: 'Grower Notes',
-              icon: Icons.notes,
-              maxLines: 4,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Grower Notes',
+                prefixIcon: Icon(Icons.note_alt_outlined),
+                border: OutlineInputBorder(),
+              ),
             ),
-
             const SizedBox(height: 32),
 
+            // Save Button
             SizedBox(
               width: double.infinity,
-              height: 52,
+              height: 56,
               child: ElevatedButton(
-                onPressed: _save,
+                onPressed: _isSubmitting ? null : _submitForm,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
                 ),
-                child: const Text(
-                  'Save Changes',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
+                child: _isSubmitting
+                    ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                    : const Text('Save Changes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  // ================= HELPERS =================
-
-  Widget _sectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: AppColors.textPrimary,
-      ),
-    );
-  }
-
-  Widget _textField({
+  Widget _buildDropdownField({
     required TextEditingController controller,
     required String label,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    int maxLines = 1,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-      ),
-    );
-  }
-
-  Widget _dropdown({
-    required String label,
-    required String? value,
     required List<String> items,
-    required void Function(String?) onChanged,
-    bool isOptional = false,
+    required IconData icon,
+    void Function(String?)? onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      value: controller.text.isEmpty ? null : controller.text,
       decoration: InputDecoration(
         labelText: label,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
+        prefixIcon: Icon(icon, color: AppColors.primary),
+        border: const OutlineInputBorder(),
       ),
-      items: [
-        if (isOptional)
-          const DropdownMenuItem(value: null, child: Text('Select...')),
-        ...items.map((e) => DropdownMenuItem(value: e, child: Text(e))),
-      ],
-      onChanged: onChanged,
+      items: items.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+      onChanged: (value) {
+        if (value != null) {
+          controller.text = value;
+          if (onChanged != null) onChanged(value);
+        }
+      },
+      validator: (v) => v == null || v.isEmpty ? 'Please select a $label' : null,
     );
   }
 
-  Widget _dateTile({
-    required String title,
+  Widget _buildDatePickerField({
+    required String label,
     required DateTime? date,
     required VoidCallback onTap,
+    required IconData icon,
   }) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: const Icon(Icons.calendar_today, color: AppColors.primary),
-      title: Text(title),
-      subtitle: Text(
-        date != null ? DateFormat('dd MMM yyyy').format(date) : 'Not set',
-      ),
-      trailing: const Icon(Icons.chevron_right),
+    return GestureDetector(
       onTap: onTap,
+      child: AbsorbPointer(
+        child: TextFormField(
+          decoration: InputDecoration(
+            labelText: label,
+            prefixIcon: Icon(icon, color: AppColors.primary),
+            border: const OutlineInputBorder(),
+            suffixIcon: const Icon(Icons.calendar_today, color: AppColors.textSecondary),
+          ),
+          controller: TextEditingController(text: date != null ? _formatDate(date) : ''),
+          validator: (v) => date == null ? 'Please select a date' : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCounterButton(IconData icon, VoidCallback onPressed) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: AppColors.primary, size: 24),
+      ),
     );
   }
 }

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pitayapro/core/widgets/status_chip.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bottom_nav.dart';
 import '../../../my_farm/presentation/providers/weather_provider.dart';
 import '../../../my_farm/presentation/providers/farm_profile_provider.dart';
 import '../../../flowering/presentation/providers/flowering_provider.dart';
+// ✅ ADDED: Import the model so we can use FloweringEvent and EventStatus
+import '../../../flowering_event/data/models/flowering_event_model.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -277,7 +280,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   // ====================== FLOWERING ======================
-  Widget _buildFloweringOverview(List floweringEvents) {
+  Widget _buildFloweringOverview(List<FloweringEvent> floweringEvents) {
     if (floweringEvents.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
@@ -293,19 +296,23 @@ class HomeScreen extends ConsumerWidget {
 
     return Column(
       children: recent.map((event) {
+        // ✅ CORRECT: status is an ENUM, not a String
         Color statusColor;
+        String statusLabel;
+        
         switch (event.status) {
-          case 'Budding':
+          case EventStatus.budding:
             statusColor = Colors.orange;
+            statusLabel = 'Budding';
             break;
-          case 'Flowering':
+          case EventStatus.flowering:
             statusColor = Colors.green;
+            statusLabel = 'Flowering';
             break;
-          case 'Harvested':
+          case EventStatus.harvested:
             statusColor = Colors.blueGrey;
+            statusLabel = 'Harvested';
             break;
-          default:
-            statusColor = Colors.grey;
         }
 
         return Container(
@@ -335,12 +342,13 @@ class HomeScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ✅ CORRECT: varietyName (NOT variety)
                     Text(
-                      event.variety,
+                      event.varietyName,
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     Text(
-                      event.block,
+                      '${event.block} — ${event.row}',
                       style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                   ],
@@ -353,7 +361,7 @@ class HomeScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  event.status,
+                  statusLabel, // ✅ CORRECT: use the string label we defined above
                   style: TextStyle(
                     fontSize: 12,
                     color: statusColor,

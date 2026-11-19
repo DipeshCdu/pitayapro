@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pitayapro/core/widgets/app_bottom_nav.dart';
 
-import '../../../../core/theme/app_colors.dart';
+// ✅ CORRECT IMPORT (3 levels up, then into flowering_event)
+import '../../../flowering_event/data/models/flowering_event_model.dart';
 import '../providers/flowering_provider.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class FloweringListScreen extends ConsumerWidget {
   const FloweringListScreen({super.key});
@@ -17,33 +18,23 @@ class FloweringListScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primaryDark,
-        foregroundColor: Colors.white,
-        title: const Text('Flowering Events'),
-        centerTitle: true,
+        title: const Text(
+          'Flowering Events',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.filter_list),
+            icon: const Icon(Icons.add, color: Colors.white),
+            onPressed: () => context.go('/flowering/add'),
           ),
         ],
       ),
       body: events.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.local_florist, size: 80, color: Colors.grey.shade400),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No flowering events yet',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap + to add your first flowering event',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                ],
+          ? const Center(
+              child: Text(
+                'No flowering events yet.\nTap + to add one.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary),
               ),
             )
           : ListView.builder(
@@ -54,131 +45,60 @@ class FloweringListScreen extends ConsumerWidget {
                 return _buildEventCard(context, event);
               },
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/flowering/add'),
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-bottomNavigationBar: const AppBottomNav(currentIndex: 2),    );
+    );
   }
 
   Widget _buildEventCard(BuildContext context, FloweringEvent event) {
-    Color statusColor;
-    switch (event.status) {
-      case 'Budding':
-        statusColor = Colors.orange;
-        break;
-      case 'Flowering':
-        statusColor = Colors.green;
-        break;
-      case 'Harvested':
-        statusColor = Colors.blueGrey;
-        break;
-      default:
-        statusColor = Colors.grey;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: InkWell(
-                onTap: () {
-          context.push('/flowering/${event.id}');
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: Row(
+    return GestureDetector(
+      onTap: () => context.go('/flowering/${event.id}'),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left icon
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.local_florist, color: AppColors.primary),
-            ),
-            const SizedBox(width: 12),
-
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    event.variety,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    event.block,
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      event.status,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: statusColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Brix + Return
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if (event.averageBrix != null)
-                  Text(
-                    '${event.averageBrix}° Brix',
-                    style: const TextStyle(
-                      fontSize: 15,
+                Text(
+                  event.varietyName,
+                  style: const TextStyle(
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                if (event.estimatedReturn != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '\$${event.estimatedReturn!.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade700,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-                if (event.moonPhase != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    event.moonPhase!,
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                  ),
-                ],
+                      color: AppColors.textPrimary),
+                ),
+                Text(
+                  '${event.fruitSet} 🍎',
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${event.block} — ${event.row}',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text(
+                  event.flowerDate == null
+                      ? 'Flowering: pending'
+                      : 'Flowered: ${event.flowerDate!.day}/${event.flowerDate!.month}/${event.flowerDate!.year}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
               ],
             ),
           ],
@@ -186,6 +106,4 @@ bottomNavigationBar: const AppBottomNav(currentIndex: 2),    );
       ),
     );
   }
-
-  
 }
