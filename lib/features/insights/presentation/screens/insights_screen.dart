@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pitayapro/core/widgets/status_chip.dart';
 import '../../../flowering/presentation/providers/flowering_provider.dart';
-import '../../../flowering_event/data/models/flowering_event_model.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_bottom_nav.dart'; // ✅ Added Bottom Nav Import
 
 class NutrientStatus {
   final String name;
@@ -199,9 +199,12 @@ class InsightsScreen extends ConsumerWidget {
               ],
             ),
           ),
+          // Added some bottom padding so the content isn't hidden behind the nav bar
+          const SizedBox(height: 80), 
         ],
       ),
-    );
+      // ✅ ADDED: Bottom Navigation Bar (Index 3 for Insights)
+    bottomNavigationBar: const AppBottomNav(),    );
   }
 
   Widget _buildMetric(String label, String value, IconData icon) {

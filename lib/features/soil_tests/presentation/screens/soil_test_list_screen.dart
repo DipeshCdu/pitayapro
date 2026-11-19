@@ -54,8 +54,7 @@ class SoilTestListScreen extends ConsumerWidget {
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      bottomNavigationBar: const AppBottomNav(currentIndex: 4),
-    );
+  bottomNavigationBar: const AppBottomNav(),    );
   }
 
   Widget _buildCard(BuildContext context, SoilTestRecord record) {

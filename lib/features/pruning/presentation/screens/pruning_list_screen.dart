@@ -54,8 +54,7 @@ class PruningListScreen extends ConsumerWidget {
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      bottomNavigationBar: const AppBottomNav(currentIndex: 1),
-    );
+  bottomNavigationBar: const AppBottomNav(),    );
   }
 
   Widget _buildCard(BuildContext context, PruningRecord record) {

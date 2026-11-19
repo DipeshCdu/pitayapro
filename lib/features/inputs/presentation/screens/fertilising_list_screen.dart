@@ -54,7 +54,7 @@ class FertilisingListScreen extends ConsumerWidget {
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-bottomNavigationBar: const AppBottomNav(currentIndex: 3),    );
+bottomNavigationBar: const AppBottomNav(),    );
   }
 
   Widget _buildRecordCard(BuildContext context, FertilisingRecord record) {

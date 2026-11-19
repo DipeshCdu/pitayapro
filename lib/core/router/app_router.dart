@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pitayapro/features/my_farm/presentation/screens/create_farm_screen.dart';
 
 // Auth
 import '../../features/auth/presentation/providers/auth_provider.dart';
@@ -67,7 +67,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // My Farm Routes
       GoRoute(path: '/my-farm', builder: (c, s) => const FarmDashboardScreen()),
-      GoRoute(path: '/my-farm/edit', builder: (c, s) => const EditFarmScreen()),
+      GoRoute(
+  path: '/my-farm/create',
+  builder: (c, s) => const CreateFarmScreen(),
+),
+GoRoute(
+  path: '/my-farm/edit/:id',
+  builder: (c, s) => EditFarmScreen(
+    farmId: int.parse(s.pathParameters['id']!),
+  ),
+),
       GoRoute(path: '/my-farm/blocks', builder: (c, s) => const BlocksListScreen()),
       GoRoute(
         path: '/my-farm/map',

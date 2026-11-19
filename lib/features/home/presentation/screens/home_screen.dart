@@ -80,8 +80,7 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(height: 30),
         ],
       ),
-      bottomNavigationBar: const AppBottomNav(currentIndex: 0),
-    );
+    bottomNavigationBar: const AppBottomNav(),    );
   }
 
   // ====================== GREETING ======================

@@ -42,7 +42,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
       }
     } catch (e) {
-      print('Failed to fetch user: $e');
     }
   }
 
